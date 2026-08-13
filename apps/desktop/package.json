@@ -1,0 +1,16 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "description": "Electron desktop client: boots the local dsh web profile in a dedicated window",
+  "version": "0.1.0-rc.5",
+  "private": true,
+  "type": "module",
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron ."
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "typescript": "^6.0.3"
+  }
+}
