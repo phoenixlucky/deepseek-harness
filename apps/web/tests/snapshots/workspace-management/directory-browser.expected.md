@@ -4,6 +4,9 @@
     - button "Home"
     - img
     - button "browse-golden"
+  - button "Locations":
+    - img
+    - text: Locations
   - button "Edit path":
     - img
   - list:

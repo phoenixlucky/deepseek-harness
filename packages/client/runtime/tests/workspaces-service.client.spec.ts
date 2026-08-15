@@ -1,6 +1,6 @@
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import type { SessionId, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { DirectoryRoot, SessionId, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-remotes/client'
 import { SessionRuntime } from '../src/client/sessions/service.ts'
 import { WorkspaceManager } from '../src/client/workspaces/manager.ts'
 import { DirectoryBrowseError, WorkspaceCreateError, WorkspaceRuntime } from '../src/client/workspaces/service.ts'
@@ -347,6 +347,22 @@ describe('WorkspaceRuntime', () => {
     expect(api.callsOf('host.createDirectory')).toEqual([{ path: '/home/u', name: 'fresh' }])
     api.onCreateDirectory = () => Promise.resolve(err({ code: 'directory-exists', message: 'taken', details: { path: '/home/u/fresh' } }))
     await expect(workspaces.createDirectory('/home/u', 'fresh')).rejects.toMatchObject({ rpcError: { code: 'directory-exists' } })
+  })
+
+  it('passes the quick-access roots through the browse wire, wrapping business failures', async () => {
+    const ctx = new Context()
+    const api = new FakeApiClient()
+    const workspaces = new WorkspaceRuntime(ctx, api, new SessionRuntime(ctx, api, fakeRemote()))
+    const roots = [
+      { kind: 'home', path: '/home/u' },
+      { kind: 'root', path: '/' },
+    ] satisfies DirectoryRoot[]
+    api.onListRoots = () => Promise.resolve(ok({ roots }))
+    await expect(workspaces.listRoots()).resolves.toEqual(roots)
+    expect(api.callsOf('host.listRoots')).toEqual([{}])
+    api.onListRoots = () => Promise.resolve(err({ code: 'directory-picker-unavailable', message: 'no browse', details: { capability: 'browse' } }))
+    await expect(workspaces.listRoots()).rejects.toBeInstanceOf(DirectoryBrowseError)
+    await expect(workspaces.listRoots()).rejects.toMatchObject({ rpcError: { code: 'directory-picker-unavailable' } })
   })
 
   it('opens a filesystem path through the host without local state', async () => {

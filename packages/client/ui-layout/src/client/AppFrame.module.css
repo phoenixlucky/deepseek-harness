@@ -4,7 +4,10 @@
   grid-template-rows: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--dsw-alias-bg-base);
+  /* Transparent so the app-background wallpaper (ui-wallpaper, set on body)
+     shows through the center column; body carries the theme base color
+     (--dsw-alias-bg-base), so the no-wallpaper look is unchanged. */
+  background: transparent;
   /* Collapse/expand animates the tracks on the deepsuite sider curve
      (--ds-ease-in-out / --ds-transition-duration-slow, ui-theme base.css). */
   transition: grid-template-columns var(--ds-transition-duration-slow) var(--ds-ease-in-out);
@@ -25,7 +28,9 @@
 .sidebarCol {
   min-width: 0;
   overflow: hidden;
-  background: var(--dsw-specific-sidebar-fill);
+  /* SidebarRoot supplies the translucent navigation surface; keep the grid
+     column itself transparent so the wallpaper can reach it. */
+  background: transparent;
   border-right: 1px solid var(--dsw-alias-border-l1);
 }
 

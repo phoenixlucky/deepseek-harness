@@ -2,7 +2,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {
-  DirectoryListing, IApiClient, RpcError,
+  DirectoryListing, DirectoryRoot, IApiClient, RpcError,
   SessionId, WorkspaceId, WorkspaceView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
@@ -224,6 +224,18 @@ export class WorkspaceRuntime implements IWorkspaces {
     const response = await this.api.host.listDirectory(path === undefined ? {} : { path }, signal)
     if (!response.result.ok) throw new DirectoryBrowseError(response.result.error)
     return response.result.value
+  }
+
+  /**
+   * List the browse dialog's quick-access jump targets through the Host's
+   * `browse` capability.
+   * @param signal - aborts the wire request (and the Host's enumeration) when the caller supersedes it.
+   * @returns the quick-access roots in presentation order.
+   */
+  async listRoots(signal?: AbortSignal): Promise<DirectoryRoot[]> {
+    const response = await this.api.host.listRoots({}, signal)
+    if (!response.result.ok) throw new DirectoryBrowseError(response.result.error)
+    return response.result.value.roots
   }
 
   /**

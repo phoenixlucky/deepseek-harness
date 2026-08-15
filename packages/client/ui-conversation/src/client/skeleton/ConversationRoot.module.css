@@ -8,7 +8,9 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  background: var(--dsw-alias-bg-base);
+  /* Let the app-background wallpaper on body show through the conversation
+     surface; cards, composer, and takeover panels keep their own fills. */
+  background: transparent;
 
   /* Shared width axis for the whole column: one content width W
      (--dsh-chat-content-width) for the transcript, the dock cards

@@ -37,10 +37,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import {
-  Button, IconCheckOutline16, IconChevronRightOutline14, IconEditOutline16, IconFolderClose16, IconFolderOpen16,
-  IconPlusOutline16, Modal,
+  Button, IconCheckOutline16, IconChevronRightOutline14, IconDataOutline16, IconEditOutline16,
+  IconFolderClose16, IconFolderOpen16, IconFolderOpenOutline16, IconPlusOutline16, Menu, Modal,
 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-client-runtime/client'
+import type { DirectoryEntry, DirectoryListing, DirectoryRoot } from '@deepseek-ai/dsh-client-runtime/client'
 import { DirectoryBrowseError } from '@deepseek-ai/dsh-client-runtime/client'
 import type { Translate } from '@deepseek-ai/dsh-client-locale/client'
 import css from './DirectoryBrowser.module.css'
@@ -51,6 +51,8 @@ export interface DirectoryBrowserProps {
   open: boolean
   /** List one directory level (absent path = the Host home directory); the signal aborts a superseded scan on the wire. */
   listDirectory: (path?: string, signal?: AbortSignal) => Promise<DirectoryListing>
+  /** List the quick-access jump targets (home, user folders, drives/root); the signal aborts the enumeration. */
+  listRoots: (signal?: AbortSignal) => Promise<DirectoryRoot[]>
   /** Create one child directory under an existing parent. */
   createDirectory: (path: string, name: string) => Promise<string>
   /** The operator confirmed a directory (the selection, else the listed level). */
@@ -67,6 +69,31 @@ export interface DirectoryBrowserProps {
 function failureText(error: unknown): string {
   if (error instanceof DirectoryBrowseError) return error.rpcError.message
   return error instanceof Error ? error.message : String(error)
+}
+
+/** Closed-union backstop for the quick-access root kinds. */
+function assertNever(value: never): never {
+  throw new TypeError(`unknown directory root kind: ${String(value)}`)
+}
+
+/** The quick-access row label: localized for conventional kinds, the bare drive letter for drives. */
+function rootLabel(root: DirectoryRoot, t: Translate): string {
+  switch (root.kind) {
+    case 'home': return t('browser.home')
+    case 'root': return t('browser.locations.root')
+    case 'drive': return root.path.replace(/[\\/]$/, '')
+    case 'desktop': return t('browser.locations.desktop')
+    case 'documents': return t('browser.locations.documents')
+    case 'downloads': return t('browser.locations.downloads')
+    default: return assertNever(root.kind)
+  }
+}
+
+/** Row glyph per root kind: the open folder for home, the drive stack for drives, a closed folder otherwise. */
+function RootGlyph({ kind }: { kind: DirectoryRoot['kind'] }) {
+  if (kind === 'home') return <IconFolderOpen16 size={16} className={css.rowIcon} />
+  if (kind === 'drive') return <IconDataOutline16 size={16} className={css.rowIcon} />
+  return <IconFolderClose16 size={16} className={css.rowIcon} />
 }
 
 /**
@@ -259,7 +286,7 @@ function LevelColumn({ entries, selectedPath, busy, onPick, showHidden, filterPr
  * @param props - owner-controlled browser props.
  * @returns the dialog element (null while closed, via Modal).
  */
-export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen, onClose, busy, t }: DirectoryBrowserProps) {
+export function DirectoryBrowser({ open, listDirectory, listRoots, createDirectory, onOpen, onClose, busy, t }: DirectoryBrowserProps) {
   // Miller state: the listed level, the selected row in it, and the selected
   // folder's own listing (the right column; null while nothing is selected).
   const [parent, setParent] = useState<DirectoryListing | null>(null)
@@ -283,11 +310,19 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
   const [folderDraft, setFolderDraft] = useState<string | null>(null)
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  // Quick-access state: the roots fetched per open (null = not loaded yet;
+  // a failed fetch leaves null and withdraws the affordance), and the
+  // locations menu's own open flag.
+  const [roots, setRoots] = useState<DirectoryRoot[] | null>(null)
+  const [locationsOpen, setLocationsOpen] = useState(false)
   const requestSeq = useRef(0)
   // The in-flight listing's controller: superseding intent aborts the wire
   // request too — the Host stops scanning — instead of only discarding the
   // eventual result while the scan keeps consuming host resources.
   const scanController = useRef<AbortController | null>(null)
+  // The in-flight roots enumeration's controller: closing the dialog aborts
+  // the Host's drive probes the same way a superseded scan is aborted.
+  const rootsController = useRef<AbortController | null>(null)
   // Bumped on every open/close edge: settlements from a previous open (a
   // pending creation included) must never mutate a reopened dialog.
   const openGeneration = useRef(0)
@@ -304,6 +339,7 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
     requestSeq.current += 1
     openGeneration.current += 1
     scanController.current?.abort()
+    rootsController.current?.abort()
   }, [])
   const compositionGuard = {
     onCompositionStart: () => { composingRef.current = true },
@@ -570,6 +606,9 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
       setChild(null)
       setCreatingFolder(false)
       setShowHidden(false)
+      // A close while the locations menu was up must not reopen it with the
+      // dialog (the trigger unmounts with the dialog, its state survives).
+      setLocationsOpen(false)
       navigate()
       return
     }
@@ -588,6 +627,28 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
     refocusPick.current = false
     refocusEditZone.current = false
   }, [open, navigate, supersede])
+
+  // The quick-access roots ride the open lifecycle: fetched once per open,
+  // aborted when the dialog closes (or a reopen supersedes them), and dropped
+  // when the open generation moved on. A failure withdraws the affordance
+  // (the path editor stays the fallback) instead of surfacing an error the
+  // core navigation does not need.
+  useEffect(() => {
+    if (!open) return
+    setRoots(null)
+    const controller = new AbortController()
+    rootsController.current = controller
+    const generation = openGeneration.current
+    listRoots(controller.signal).then((found) => {
+      if (generation !== openGeneration.current) return
+      setRoots(found)
+    }).catch((reason: unknown) => {
+      if (generation !== openGeneration.current) return
+      setRoots(null)
+      console.warn('directory roots listing failed:', reason)
+    })
+    return () => { controller.abort() }
+  }, [open, listRoots])
 
   /** The folder a create or Open acts on: the selection, else the listed level. */
   const targetPath = selected?.path ?? parent?.path ?? null
@@ -826,6 +887,43 @@ export function DirectoryBrowser({ open, listDirectory, createDirectory, onOpen,
                       </span>
                     ))}
                   </span>
+                  {/* The quick-access menu: jump to home, a user folder, or a
+                    * drive/root without typing a path. Rendered only once the
+                    * enumeration answered; while it is pending the edit zone
+                    * and the crumbs alone carry navigation. */}
+                  {roots !== null && roots.length > 0 && (
+                    <Menu
+                      open={locationsOpen}
+                      onClose={() => { setLocationsOpen(false) }}
+                      items={roots.map(root => ({
+                        id: root.path,
+                        label: rootLabel(root, t),
+                        icon: <RootGlyph kind={root.kind} />,
+                        disabled: parentInert,
+                      }))}
+                      onSelect={(id) => {
+                        setLocationsOpen(false)
+                        const root = roots.find(candidate => candidate.path === id)
+                        if (root !== undefined) navigate(root.path)
+                      }}
+                      align="end"
+                      dense
+                      portal
+                      anchor={(
+                        <button
+                          type="button"
+                          className={css.locationsButton}
+                          aria-haspopup="menu"
+                          aria-expanded={locationsOpen}
+                          disabled={parentInert}
+                          onClick={() => { setLocationsOpen(v => !v) }}
+                        >
+                          <IconFolderOpenOutline16 size={14} className={css.locationsGlyph} />
+                          <span>{t('browser.locations')}</span>
+                        </button>
+                      )}
+                    />
+                  )}
                   {/* The empty zone right of the crumbs is the path-edit
                     * affordance: the whole remainder of the bar clicks into
                     * the editor, and the pencil glyph parked at its right

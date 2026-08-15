@@ -3,12 +3,14 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { DirectoryPickerError } from '@deepseek-ai/dsh-host-directory-picker'
 import type { DirectoryPickerBrowseCapability } from '@deepseek-ai/dsh-host-directory-picker'
-import BrowseDirectoryPicker, { boundedInsert, fullyQualified, raceAbort } from '../src/index.ts'
-import type { ListingCandidate } from '../src/index.ts'
+import BrowseDirectoryPicker, {
+  boundedInsert, fullyQualified, listRoots, probeDriveLetter, raceAbort,
+} from '../src/index.ts'
+import type { DirectoryRootsInternals, ListingCandidate } from '../src/index.ts'
 
 let root: string
 let capability: DirectoryPickerBrowseCapability
@@ -227,5 +229,80 @@ describe('BrowseDirectoryPicker', () => {
     // Missing parent is a real failure, not a level to invent.
     const missingParent = await capability.createDirectory(join(root, 'no-such-dir'), 'child').catch((error: unknown) => error)
     expect((missingParent as DirectoryPickerError).code).toBe('directory-create-failed')
+  })
+})
+
+describe('BrowseDirectoryPicker quick-access roots', () => {
+  it('exposes the quick-access enumeration through the browse capability', async () => {
+    const picker = new BrowseDirectoryPicker(new Context(), { maxEntries: 1000 }, { platform: 'linux', home: '/home/u' })
+    const picked = picker.capability()
+    if (picked.kind !== 'browse') throw new Error('browse backend must advertise the browse capability')
+    // /home/u and its conventional folders do not exist on the test host:
+    // home plus the filesystem root is the deterministic answer.
+    await expect(picked.listRoots()).resolves.toEqual([
+      { kind: 'home', path: '/home/u' },
+      { kind: 'root', path: '/' },
+    ])
+  })
+
+  it('includes the conventional user folders that exist under the home', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-roots-'))
+    try {
+      await mkdir(join(home, 'Desktop'))
+      await mkdir(join(home, 'Downloads'))
+      // A file and a missing folder are not roots; Documents was not created.
+      await writeFile(join(home, 'Documents'), 'not a folder')
+      const roots = await listRoots({ platform: 'linux', home })
+      expect(roots).toEqual([
+        { kind: 'home', path: home },
+        { kind: 'desktop', path: join(home, 'Desktop') },
+        { kind: 'downloads', path: join(home, 'Downloads') },
+        { kind: 'root', path: '/' },
+      ])
+    } finally {
+      await rm(home, { recursive: true, force: true })
+    }
+  })
+
+  it('enumerates every present drive letter on Windows, sorted by letter', async () => {
+    const internals: DirectoryRootsInternals = {
+      platform: 'win32',
+      home: 'C:\\Users\\test',
+      probeDrive: async letter => letter === 'C' || letter === 'D' || letter === 'Z',
+    }
+    await expect(listRoots(internals)).resolves.toEqual([
+      { kind: 'home', path: 'C:\\Users\\test' },
+      { kind: 'drive', path: 'C:\\' },
+      { kind: 'drive', path: 'D:\\' },
+      { kind: 'drive', path: 'Z:\\' },
+    ])
+  })
+
+  it('drops a drive whose probe outlives the bound instead of hanging the list', async () => {
+    vi.useFakeTimers()
+    try {
+      const pending = listRoots({
+        platform: 'win32',
+        home: 'C:\\Users\\test',
+        // The stalled probe never settles: the bound must release the list.
+        probeDrive: () => new Promise<boolean>(() => {}),
+      })
+      await vi.advanceTimersByTimeAsync(1000)
+      await expect(pending).resolves.toEqual([{ kind: 'home', path: 'C:\\Users\\test' }])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('rejects with the caller reason when the enumeration is aborted', async () => {
+    const gone = new AbortController()
+    gone.abort(new Error('caller left'))
+    await expect(listRoots({ platform: 'linux', home: '/home/u' }, gone.signal)).rejects.toThrow('caller left')
+  })
+
+  it('probeDriveLetter reports a missing letter without throwing', async () => {
+    // No platform has a volume at Q:\, so the probe answers false (fast or at
+    // the bound) instead of failing the enumeration.
+    await expect(probeDriveLetter('Q')).resolves.toBe(false)
   })
 })

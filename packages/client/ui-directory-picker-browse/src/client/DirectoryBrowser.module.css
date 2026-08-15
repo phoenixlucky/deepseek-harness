@@ -172,6 +172,42 @@
   color: var(--dsw-alias-label-caption);
 }
 
+/* Quick-access (locations) trigger seated between the crumb trail and the
+ * path-edit zone: a compact labeled button whose glyph and label share the
+ * tertiary ink of the surrounding navigation. */
+.locationsButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  height: 22px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.locationsButton:hover:enabled,
+.locationsButton:focus-visible {
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.locationsButton:disabled {
+  color: var(--dsw-alias-label-caption);
+  cursor: default;
+}
+
+.locationsGlyph {
+  flex: none;
+}
+
 /* Chrome-free: the bar around it draws the box (border, radius, padding). */
 .pathInput {
   box-sizing: border-box;

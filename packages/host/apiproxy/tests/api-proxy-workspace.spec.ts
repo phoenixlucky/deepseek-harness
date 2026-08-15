@@ -172,6 +172,10 @@ const BROWSE_STUB: DirectoryPickerCapability = {
       truncated: false,
     }
   },
+  listRoots: async () => [
+    { kind: 'home', path: '/home/user' },
+    { kind: 'root', path: '/' },
+  ],
   createDirectory: async (path, name) => {
     if (name === 'taken') throw new DirectoryPickerError('directory-exists', `${path}/${name}`, 'already exists')
     if (name === 'unwritable') throw new Error('disk detached')
@@ -209,6 +213,7 @@ describe('host.listDirectory / host.createDirectory', () => {
       list: (_path, signal) => new Promise((_resolve, reject) => {
         signal?.addEventListener('abort', () => { reject(new Error('scan aborted')) }, { once: true })
       }),
+      listRoots: async () => [],
       createDirectory: async () => '/never',
     })
     const abort = new AbortController()
@@ -224,6 +229,52 @@ describe('host.listDirectory / host.createDirectory', () => {
     })
     expect((await api.host.createDirectory(request({ path: '/x', name: 'y' }))).result).toMatchObject({
       ok: false, error: { code: 'directory-picker-unavailable', details: { capability: 'native' } },
+    })
+  })
+})
+
+describe('host.listRoots', () => {
+  it('serves the quick-access roots through the browse capability', async () => {
+    const { api } = await harness(undefined, BROWSE_STUB)
+    const response = await api.host.listRoots(request({}), new AbortController().signal)
+    expect(response.result).toEqual({
+      ok: true,
+      value: { roots: [{ kind: 'home', path: '/home/user' }, { kind: 'root', path: '/' }] },
+    })
+  })
+
+  it('folds a roots-enumeration failure into an internal error', async () => {
+    const { api } = await harness(undefined, {
+      kind: 'browse',
+      list: async () => ({ path: '/', home: '/home/user', crumbs: [], entries: [], truncated: false }),
+      listRoots: async () => { throw new Error('enumeration exploded') },
+      createDirectory: async () => '/never',
+    })
+    const response = await api.host.listRoots(request({}), new AbortController().signal)
+    expect(response.result).toMatchObject({ ok: false, error: { code: 'internal' } })
+  })
+
+  it('reports an aborted enumeration as cancelled', async () => {
+    const { api } = await harness(undefined, {
+      kind: 'browse',
+      list: async () => ({ path: '/', home: '/home/user', crumbs: [], entries: [], truncated: false }),
+      listRoots: signal => new Promise<never>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => { reject(new Error('enumeration aborted')) }, { once: true })
+      }),
+      createDirectory: async () => '/never',
+    })
+    const abort = new AbortController()
+    const pending = api.host.listRoots(request({}), abort.signal)
+    abort.abort()
+    expect((await pending).result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
+  })
+
+  it('refuses the roots RPC under a native composition', async () => {
+    const { api } = await harness()
+    const response = await api.host.listRoots(request({}), new AbortController().signal)
+    expect(response.result).toMatchObject({
+      ok: false,
+      error: { code: 'directory-picker-unavailable', details: { capability: 'native' } },
     })
   })
 })

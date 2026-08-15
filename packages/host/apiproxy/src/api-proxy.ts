@@ -2989,6 +2989,27 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         }
       },
 
+      async listRoots(request, signal) {
+        const capability = ctx.directoryPicker.capability()
+        if (capability.kind !== 'browse') {
+          return err(request, {
+            code: 'directory-picker-unavailable',
+            message: `host.listRoots needs the browse capability; the composed picker serves "${capability.kind}"`,
+            details: { capability: capability.kind },
+          })
+        }
+        try {
+          // The carrier's signal bounds the enumeration too: a disconnected
+          // caller must not keep the drive probes running.
+          return ok(request, { roots: await capability.listRoots(signal) })
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            return err(request, { code: 'cancelled', message: 'directory roots listing was aborted', details: {} })
+          }
+          return err(request, directoryError(error))
+        }
+      },
+
       async createDirectory(request) {
         const capability = ctx.directoryPicker.capability()
         if (capability.kind !== 'browse') {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import type { DirectoryListing } from '@deepseek-ai/dsh-client-runtime/client'
+import type { DirectoryListing, DirectoryRoot } from '@deepseek-ai/dsh-client-runtime/client'
 import { DirectoryBrowseError } from '@deepseek-ai/dsh-client-runtime/client'
 import { DirectoryBrowser } from '../src/client/DirectoryBrowser.tsx'
 
@@ -88,12 +88,18 @@ function listingFor(path?: string): DirectoryListing {
 
 function mount(overrides: Partial<Parameters<typeof DirectoryBrowser>[0]> = {}) {
   const listDirectory = vi.fn(async (path?: string) => listingFor(path))
+  const listRoots = vi.fn(async (): Promise<DirectoryRoot[]> => [
+    { kind: 'home', path: HOME },
+    { kind: 'desktop', path: DOCS },
+    { kind: 'root', path: '/' },
+  ])
   const createDirectory = vi.fn(async (path: string, name: string) => `${path}/${name}`)
   const onOpen = vi.fn()
   const onClose = vi.fn()
   const props = {
     open: true,
     listDirectory,
+    listRoots,
     createDirectory,
     onOpen,
     onClose,
@@ -102,7 +108,7 @@ function mount(overrides: Partial<Parameters<typeof DirectoryBrowser>[0]> = {}) 
     ...overrides,
   }
   const view = render(<DirectoryBrowser {...props} />)
-  return { view, props, listDirectory, createDirectory, onOpen, onClose }
+  return { view, props, listDirectory, listRoots, createDirectory, onOpen, onClose }
 }
 
 /** The rendered level columns, left-to-right. */
@@ -120,6 +126,7 @@ describe('DirectoryBrowser', () => {
     const b = mount({ open: false })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(b.listDirectory).not.toHaveBeenCalled()
+    expect(b.listRoots).not.toHaveBeenCalled()
   })
 
   it('opens at the Host home as one wide column, hides hidden entries, and roots the crumbs at Home', async () => {
@@ -131,6 +138,64 @@ describe('DirectoryBrowser', () => {
     expect(screen.queryByText('.config')).toBeNull()
     expect(screen.getByRole('button', { name: 'browser.home' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: '/' })).toBeNull()
+  })
+
+  it('offers the quick-access menu over the enumerated roots and jumps on pick', async () => {
+    const b = mount({
+      listRoots: vi.fn(async (): Promise<DirectoryRoot[]> => [
+        { kind: 'home', path: HOME },
+        { kind: 'desktop', path: DOCS },
+        { kind: 'drive', path: 'D:\\' },
+      ]),
+    })
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'browser.locations' })).toBeTruthy() })
+    // The drive row is labeled by its bare letter, the conventional kinds by
+    // their localized labels.
+    fireEvent.click(screen.getByRole('button', { name: 'browser.locations' }))
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: 'browser.locations.desktop' })).toBeTruthy()
+    })
+    expect(screen.getByRole('menuitem', { name: 'browser.home' })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: 'D:' })).toBeTruthy()
+    // Picking a root navigates exactly like a crumb jump: the target lands
+    // selection-anchored (two panes away from the home display root).
+    fireEvent.click(screen.getByRole('menuitem', { name: 'browser.locations.desktop' }))
+    await waitFor(() => { expect(columns()).toHaveLength(2) })
+    expect(b.listDirectory).toHaveBeenCalledWith(DOCS, expect.any(AbortSignal))
+    expect(rowButton(within(columns()[0]!).getByRole('listitem')).getAttribute('aria-current')).toBe('true')
+    expect(within(columns()[1]!).getByText('harness')).toBeTruthy()
+    expect(screen.queryByRole('menuitem', { name: 'browser.locations.desktop' })).toBeNull()
+  })
+
+  it('disables the quick-access trigger while adoption is busy', async () => {
+    mount({ busy: true })
+    await waitFor(() => { expect(screen.getByRole('listitem')).toBeTruthy() })
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'browser.locations' }).disabled).toBe(true)
+  })
+
+  it('withdraws the quick-access trigger when the roots enumeration fails', async () => {
+    mount({ listRoots: vi.fn(async () => { throw new Error('roots unavailable') }) })
+    await waitFor(() => { expect(screen.getByRole('listitem')).toBeTruthy() })
+    expect(screen.queryByRole('button', { name: 'browser.locations' })).toBeNull()
+    // The core navigation is untouched: path entry still works.
+    fireEvent.click(screen.getByRole('button', { name: 'browser.editPath' }))
+    expect(screen.getByLabelText('browser.editPath')).toBeTruthy()
+  })
+
+  it('aborts the roots enumeration on close and refetches on reopen', async () => {
+    const signals: (AbortSignal | undefined)[] = []
+    const b = mount({
+      listRoots: vi.fn((signal?: AbortSignal): Promise<DirectoryRoot[]> => {
+        signals.push(signal)
+        return Promise.resolve([{ kind: 'home', path: HOME }])
+      }),
+    })
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'browser.locations' })).toBeTruthy() })
+    b.view.rerender(<DirectoryBrowser {...b.props} open={false} />)
+    expect(signals[0]?.aborted).toBe(true)
+    b.view.rerender(<DirectoryBrowser {...b.props} open />)
+    await waitFor(() => { expect(b.listRoots).toHaveBeenCalledTimes(2) })
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'browser.locations' })).toBeTruthy() })
   })
 
   it('shows hidden entries when the toggle is on and hides them again on close', async () => {

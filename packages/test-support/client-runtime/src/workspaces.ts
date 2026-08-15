@@ -1,7 +1,7 @@
 /** Test-owned workspaces face: the renderer standard-kit observable plus recorded actions. */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
-  DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceId, WorkspaceListState, WorkspaceView,
+  DirectoryListing, DirectoryRoot, IWorkspaces, SessionId, SnapshotStore, WorkspaceId, WorkspaceListState, WorkspaceView,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { workspaceListState } from './fixtures.ts'
 import type { Stabilizer } from './fixtures.ts'
@@ -148,6 +148,22 @@ export class TestWorkspaces implements IWorkspaces {
     const stub = this.stubs.get('createDirectory')
     if (stub !== undefined) return await (stub(path, name) as Promise<string>)
     return `${path}/${name}`
+  }
+
+  /**
+   * Quick-access roots (recorded). The default serves the home level plus the
+   * filesystem root; stub to shape a drive/user-folder list.
+   * @param signal - abortable like the production face's wire call.
+   * @returns the quick-access roots.
+   */
+  async listRoots(signal?: AbortSignal): Promise<DirectoryRoot[]> {
+    this.calls.push({ method: 'listRoots', args: [signal] })
+    const stub = this.stubs.get('listRoots')
+    if (stub !== undefined) return await (stub(signal) as Promise<DirectoryRoot[]>)
+    return [
+      { kind: 'home', path: '/home/test' },
+      { kind: 'root', path: '/' },
+    ]
   }
 
   /**

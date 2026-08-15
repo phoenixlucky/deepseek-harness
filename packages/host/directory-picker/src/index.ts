@@ -56,6 +56,19 @@ export interface DirectoryListing {
 }
 
 /**
+ * One quick-access jump target the browse dialog offers beside the listed
+ * level: the home directory, a platform root or drive, or a conventional
+ * user folder. The client owns the display name — `kind` is a machine key,
+ * never user-visible copy.
+ */
+export interface DirectoryRoot {
+  /** Root kind; the client localizes the label for each kind. */
+  kind: 'home' | 'root' | 'drive' | 'desktop' | 'documents' | 'downloads'
+  /** Absolute host path of the root. */
+  path: string
+}
+
+/**
  * The browse interaction: listing/creation primitives an in-app browser
  * drives one level at a time. Works for remote clients — nothing renders on
  * the host display.
@@ -75,6 +88,16 @@ export interface DirectoryPickerBrowseCapability {
    * Windows, its current drive) or cannot be listed.
    */
   list(path?: string, signal?: AbortSignal): Promise<DirectoryListing>
+  /**
+   * List the quick-access jump targets the browser can offer: the host
+   * account's home, the platform root or (on Windows) every present drive
+   * letter, and the conventional user folders (Desktop, Documents, Downloads)
+   * that exist. Existence is probed at call time, so a detached network drive
+   * or a redirect that moved a folder away simply drops that root.
+   * @param signal - caller lifetime; abort rejects with the abort reason.
+   * @returns the roots in presentation order (home, user folders, drives/root).
+   */
+  listRoots(signal?: AbortSignal): Promise<DirectoryRoot[]>
   /**
    * Create one child directory under an existing parent.
    * @param path - absolute existing parent directory.

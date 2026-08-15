@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod'
-import type { DirectoryEntry } from './host.ts'
+import type { DirectoryEntry, DirectoryRoot } from './host.ts'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
 
@@ -48,6 +48,20 @@ export const hostListDirectoryValueSchema = z.object({
   entries: z.array(directoryEntrySchema),
   truncated: z.boolean(),
 }) satisfies z.ZodType<Wire<ResponseValue<'host.listDirectory'>>>
+
+/** One quick-access root: a closed kind key plus the absolute path. */
+export const directoryRootSchema = z.object({
+  kind: z.enum(['home', 'root', 'drive', 'desktop', 'documents', 'downloads']),
+  path: z.string(),
+}) satisfies z.ZodType<Wire<DirectoryRoot>>
+
+/** host.listRoots request payload (empty object literal). */
+export const hostListRootsRequestSchema = z.object({}) satisfies z.ZodType<Wire<RequestPayload<'host.listRoots'>>>
+
+/** host.listRoots response value. */
+export const hostListRootsValueSchema = z.object({
+  roots: z.array(directoryRootSchema),
+}) satisfies z.ZodType<Wire<ResponseValue<'host.listRoots'>>>
 
 /** host.createDirectory request payload: name must be one plain path segment. */
 export const hostCreateDirectoryRequestSchema = z.object({

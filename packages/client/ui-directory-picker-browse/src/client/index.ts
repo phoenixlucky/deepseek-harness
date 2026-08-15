@@ -46,6 +46,11 @@ export function apply(ctx: ClientContext): void {
         'browser.loading': '加载中…',
         'browser.truncated': '文件夹过多，仅显示开头部分。',
         'browser.showHidden': '显示隐藏文件',
+        'browser.locations': '常用位置',
+        'browser.locations.root': '根目录',
+        'browser.locations.desktop': '桌面',
+        'browser.locations.documents': '文档',
+        'browser.locations.downloads': '下载',
       }],
       ['en', {
         'browser.title': 'Select Workspace Directory',
@@ -61,6 +66,11 @@ export function apply(ctx: ClientContext): void {
         'browser.loading': 'Loading…',
         'browser.truncated': 'Too many folders to list; only the beginning is shown.',
         'browser.showHidden': 'Show hidden files',
+        'browser.locations': 'Locations',
+        'browser.locations.root': 'Root',
+        'browser.locations.desktop': 'Desktop',
+        'browser.locations.documents': 'Documents',
+        'browser.locations.downloads': 'Downloads',
       }],
     ]
     try {
@@ -74,6 +84,7 @@ export function apply(ctx: ClientContext): void {
 
   const injected = (): BrowseFlowInjected => ({
     listDirectory: (path, signal) => ctx.workspaces.listDirectory(path, signal),
+    listRoots: signal => ctx.workspaces.listRoots(signal),
     createDirectory: (path, name) => ctx.workspaces.createDirectory(path, name),
     t: ctx.locale.bind(LOCALE_NS),
   })

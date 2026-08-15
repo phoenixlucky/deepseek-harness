@@ -18,8 +18,25 @@ import {
   DirectoryPicker, DirectoryPickerError,
 } from '@deepseek-ai/dsh-host-directory-picker'
 import type {
-  DirectoryEntry, DirectoryListing, DirectoryPickerCapability,
+  DirectoryEntry, DirectoryListing, DirectoryPickerCapability, DirectoryRoot,
 } from '@deepseek-ai/dsh-host-directory-picker'
+
+/** Drive letters probed on Windows (the standard 26-letter table). */
+const DRIVE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+/**
+ * Bound on one drive-presence probe. A present local drive answers in
+ * microseconds and a missing letter fails fast with ENOENT, so the bound only
+ * cuts genuinely stalled probes — most often a disconnected mapped network
+ * drive whose SMB reconnect would otherwise hang the quick-access list for
+ * the SMB timeout.
+ */
+const DRIVE_PROBE_TIMEOUT_MS = 400
+/** Conventional user folders offered as quick-access roots when they exist. */
+const COMMON_FOLDERS: readonly { kind: DirectoryRoot['kind']; name: string }[] = [
+  { kind: 'desktop', name: 'Desktop' },
+  { kind: 'documents', name: 'Documents' },
+  { kind: 'downloads', name: 'Downloads' },
+]
 
 /**
  * Ancestor chain from the filesystem root to `target` inclusive — the
@@ -183,6 +200,79 @@ export interface Config {
   maxEntries: number
 }
 
+/** Platform facts the quick-access enumeration reads, injectable for deterministic tests. */
+export interface DirectoryRootsInternals {
+  /** Platform override (defaults to `process.platform`). */
+  platform?: NodeJS.Platform
+  /** Home-directory override (defaults to `os.homedir()`). */
+  home?: string
+  /** Windows drive-presence probe (defaults to a bounded stat probe). */
+  probeDrive?: (letter: string) => Promise<boolean>
+}
+
+/** True when `target` names an existing directory (a file or broken link is not a root). */
+async function isDirectory(target: string): Promise<boolean> {
+  try {
+    return (await stat(target)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Probe one Windows drive letter's presence with the bounded stat probe.
+ * @param letter - the drive letter to probe.
+ * @returns whether a volume answers at `letter:\`.
+ */
+export async function probeDriveLetter(letter: string): Promise<boolean> {
+  const present = stat(`${letter}:\\`).then(() => true, () => false)
+  return await Promise.race([
+    present,
+    new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => { resolve(false) }, DRIVE_PROBE_TIMEOUT_MS)
+      void present.then(() => { clearTimeout(timer) })
+    }),
+  ])
+}
+
+/**
+ * Enumerate the browse dialog's quick-access roots: the host account's home,
+ * the conventional user folders that exist under it, and the platform's
+ * volume surface — every present drive letter on Windows, the filesystem root
+ * elsewhere. Probing is bounded and failure-tolerant throughout: a root that
+ * cannot be reached in time is dropped, never an error.
+ * @param internals - platform facts; tests inject every one of them.
+ * @param signal - caller lifetime; an abort rejects with its reason.
+ * @returns the roots in presentation order (home, user folders, drives/root).
+ */
+export async function listRoots(
+  internals: DirectoryRootsInternals = {},
+  signal?: AbortSignal,
+): Promise<DirectoryRoot[]> {
+  const platform = internals.platform ?? process.platform
+  const home = internals.home ?? homedir()
+  signal?.throwIfAborted()
+  const roots: DirectoryRoot[] = [{ kind: 'home', path: home }]
+  for (const { kind, name } of COMMON_FOLDERS) {
+    const candidate = join(home, name)
+    if (await isDirectory(candidate)) roots.push({ kind, path: candidate })
+  }
+  if (platform === 'win32') {
+    const probe = internals.probeDrive ?? probeDriveLetter
+    const present = await Promise.all(DRIVE_LETTERS.split('').map(async (letter) => {
+      const found = await probe(letter)
+      signal?.throwIfAborted()
+      return found ? letter : null
+    }))
+    for (const letter of present) {
+      if (letter !== null) roots.push({ kind: 'drive', path: `${letter}:\\` })
+    }
+  } else {
+    roots.push({ kind: 'root', path: '/' })
+  }
+  return roots
+}
+
 /** The `ctx.directoryPicker` browse implementation (stable capability object per service life). */
 export default class BrowseDirectoryPicker extends DirectoryPicker {
   /**
@@ -196,14 +286,26 @@ export default class BrowseDirectoryPicker extends DirectoryPicker {
     maxEntries: z.natural().min(1).default(1000),
   })
 
-  private readonly browseCapability: DirectoryPickerCapability = {
-    kind: 'browse',
-    list: (path, signal) => this.list(path, signal),
-    createDirectory: (path, name) => this.createDirectory(path, name),
-  }
+  private readonly browseCapability: DirectoryPickerCapability
 
-  constructor(ctx: Context, private readonly config: Config) {
+  /**
+   * @param ctx - cordis context registering the service.
+   * @param config - validated plugin configuration.
+   * @param internals - platform facts for the quick-access enumeration; only
+   * tests pass these.
+   */
+  constructor(
+    ctx: Context,
+    private readonly config: Config,
+    private readonly internals: DirectoryRootsInternals = {},
+  ) {
     super(ctx)
+    this.browseCapability = {
+      kind: 'browse',
+      list: (path, signal) => this.list(path, signal),
+      listRoots: signal => listRoots(this.internals, signal),
+      createDirectory: (path, name) => this.createDirectory(path, name),
+    }
   }
 
   /**

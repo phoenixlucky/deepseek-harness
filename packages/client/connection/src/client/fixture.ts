@@ -2561,6 +2561,16 @@ function createFixtureWorld(options: FixtureOptions): FixtureWorld {
         directoryTree.set(target, [])
         return ok(request, { path: target })
       },
+      // Deterministic quick-access surface over the same fixture tree: the
+      // browse dialog's locations menu lists these and jumps on pick.
+      listRoots: request => ok(request, {
+        roots: [
+          { kind: 'home', path: FIXTURE_HOME },
+          { kind: 'desktop', path: `${FIXTURE_HOME}/Documents` },
+          { kind: 'downloads', path: `${FIXTURE_HOME}/Downloads` },
+          { kind: 'root', path: '/' },
+        ],
+      }),
       openPath: request => ok(request, { opened: true as const }),
     },
     workspace: {
@@ -3096,6 +3106,7 @@ export class FixtureApiClient extends AbstractApiClient {
       case 'host.describe': return this.api.host.describe(request)
       case 'host.pickDirectory': return this.api.host.pickDirectory(request, new AbortController().signal)
       case 'host.listDirectory': return this.api.host.listDirectory(request, new AbortController().signal)
+      case 'host.listRoots': return this.api.host.listRoots(request, new AbortController().signal)
       case 'host.createDirectory': return this.api.host.createDirectory(request)
       case 'host.openPath': return this.api.host.openPath(request, new AbortController().signal)
       case 'workspace.list': return this.api.workspace.list(request)

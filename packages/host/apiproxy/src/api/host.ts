@@ -32,6 +32,13 @@ export interface DirectoryListing {
   truncated: boolean
 }
 
+/** One quick-access jump target of the in-app browser (kind keys the client's localized label). */
+export interface DirectoryRoot {
+  kind: 'home' | 'root' | 'drive' | 'desktop' | 'documents' | 'downloads'
+  /** Absolute host path of the root. */
+  path: string
+}
+
 /** Host-level unary methods. */
 export interface HostApi {
   /**
@@ -72,6 +79,16 @@ export interface HostApi {
     request: RpcRequest<{ path?: string }>,
     signal: AbortSignal,
   ): Promise<RpcResponse<DirectoryListing>>
+
+  /**
+   * List the in-app browser's quick-access jump targets (home, user folders,
+   * drives/filesystem root). Only served under the `browse` capability; the
+   * backend drops roots that cannot be reached in time instead of failing.
+   */
+  listRoots(
+    request: RpcRequest<{}>,
+    signal: AbortSignal,
+  ): Promise<RpcResponse<{ roots: DirectoryRoot[] }>>
 
   /**
    * Create one child directory under an existing parent (the browser's
