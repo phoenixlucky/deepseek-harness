@@ -198,6 +198,26 @@ describe('loadWin32DialogBindings over the fake COM world', () => {
     expect(world.dpiContexts).toEqual([-4, -3])
   })
 
+  it('grows the read window for paths longer than the first 64-byte window', async () => {
+    // CoTaskMemAlloc hands back only the path, so the reader must find the
+    // NUL within a small window instead of faulting a fixed 32 KB read; a
+    // long path exercises the geometric window growth.
+    const longPath = 'C:\\' + 'sub\\'.repeat(12) + 'directory'
+    const world = comWorld({ path: longPath })
+    installFakeKoffi(world)
+    const bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
+    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBe(longPath)
+  })
+
+  it('does not cut a path short at a zero low byte of a BMP character', async () => {
+    // U+4E00 ("一") encodes as 00 4E in UTF-16LE: a lone-zero-byte NUL check
+    // would stop right there and return a truncated path.
+    const world = comWorld({ path: 'C:\\第一层\\directory' })
+    installFakeKoffi(world)
+    const bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
+    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBe('C:\\第一层\\directory')
+  })
+
   it('keeps the tier when no DPI context is accepted or the symbol is absent', async () => {
     // DPI is a cosmetic best-effort: the modern dialog still opens.
     const rejecting = comWorld({ supportedDpiContexts: [] })

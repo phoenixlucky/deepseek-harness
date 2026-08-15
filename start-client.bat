@@ -12,6 +12,12 @@ rem ============================================================
 echo [0/3] DeepSeek Harness client launcher
 echo.
 
+rem ---------- 0. pin Node version ----------
+call nvm use 24
+if errorlevel 1 (
+  echo [WARN] "nvm use 24" failed; falling back to the Node on PATH.
+)
+
 rem ---------- 1. prerequisites ----------
 where node >nul 2>nul
 if errorlevel 1 (

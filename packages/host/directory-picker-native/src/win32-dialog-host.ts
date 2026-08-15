@@ -21,7 +21,14 @@ import type { Win32DialogWorkerData } from './win32-dialog-worker.ts'
  * @returns the spawned child process.
  */
 export function spawnDialogWorker(data: Win32DialogWorkerData): ReturnType<typeof spawn> {
-  const env = { ...process.env, DSH_DIALOG_TITLE: data.title }
+  const env: NodeJS.ProcessEnv = { ...process.env, DSH_DIALOG_TITLE: data.title }
+  // Under Electron's utility process (the desktop host), process.execPath is
+  // the Electron binary. child_process.fork pins ELECTRON_RUN_AS_NODE itself;
+  // a raw spawn does not, so without the pin the worker boots as an Electron
+  // app, `process.send` is undefined, and it exits before reporting a result.
+  if ('electron' in process.versions && env.ELECTRON_RUN_AS_NODE === undefined) {
+    env.ELECTRON_RUN_AS_NODE = '1'
+  }
   const stdio: StdioOptions = ['ignore', 'inherit', 'inherit', 'ipc']
   /* v8 ignore next 3 -- the built-output arm: tests always run unbuilt (src/) */
   if (!import.meta.url.endsWith('.ts')) {
