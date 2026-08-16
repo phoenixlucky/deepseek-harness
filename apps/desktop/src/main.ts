@@ -71,6 +71,7 @@ function openWindow(url: string): void {
     },
   })
   window.on('closed', () => {
+    quitRequested = true
     window = undefined
     terminateServer()
     app.quit()
