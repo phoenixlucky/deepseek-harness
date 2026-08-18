@@ -3,7 +3,7 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { DirectoryPickerError } from '@deepseek-ai/dsh-host-directory-picker'
 import type { DirectoryPickerBrowseCapability } from '@deepseek-ai/dsh-host-directory-picker'
@@ -279,19 +279,16 @@ describe('BrowseDirectoryPicker quick-access roots', () => {
   })
 
   it('drops a drive whose probe outlives the bound instead of hanging the list', async () => {
-    vi.useFakeTimers()
-    try {
-      const pending = listRoots({
-        platform: 'win32',
-        home: 'C:\\Users\\test',
-        // The stalled probe never settles: the bound must release the list.
-        probeDrive: () => new Promise<boolean>(() => {}),
-      })
-      await vi.advanceTimersByTimeAsync(1000)
-      await expect(pending).resolves.toEqual([{ kind: 'home', path: 'C:\\Users\\test' }])
-    } finally {
-      vi.useRealTimers()
-    }
+    // The stalled probe never settles, so the enumeration may only finish
+    // through the real 400ms release bound. Real timers, deliberately: the
+    // probe is created only after the three real `stat` calls on the
+    // conventional folders, which fake timers cannot advance past.
+    const stalledHome = join(tmpdir(), `dsh-stalled-probe-${process.pid}`)
+    await expect(listRoots({
+      platform: 'win32',
+      home: stalledHome,
+      probeDrive: () => new Promise<boolean>(() => {}),
+    })).resolves.toEqual([{ kind: 'home', path: stalledHome }])
   })
 
   it('rejects with the caller reason when the enumeration is aborted', async () => {

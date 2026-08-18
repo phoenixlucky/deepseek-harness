@@ -219,20 +219,24 @@ async function isDirectory(target: string): Promise<boolean> {
   }
 }
 
+/** Resolve a drive probe or, when it outlives the release bound, `false` — a stalled volume never holds the listing. */
+async function driveProbeWithinBound(probe: Promise<boolean>): Promise<boolean> {
+  return await Promise.race([
+    probe,
+    new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => { resolve(false) }, DRIVE_PROBE_TIMEOUT_MS)
+      void probe.then(() => { clearTimeout(timer) })
+    }),
+  ])
+}
+
 /**
  * Probe one Windows drive letter's presence with the bounded stat probe.
  * @param letter - the drive letter to probe.
  * @returns whether a volume answers at `letter:\`.
  */
 export async function probeDriveLetter(letter: string): Promise<boolean> {
-  const present = stat(`${letter}:\\`).then(() => true, () => false)
-  return await Promise.race([
-    present,
-    new Promise<boolean>((resolve) => {
-      const timer = setTimeout(() => { resolve(false) }, DRIVE_PROBE_TIMEOUT_MS)
-      void present.then(() => { clearTimeout(timer) })
-    }),
-  ])
+  return await driveProbeWithinBound(stat(`${letter}:\\`).then(() => true, () => false))
 }
 
 /**
@@ -260,7 +264,9 @@ export async function listRoots(
   if (platform === 'win32') {
     const probe = internals.probeDrive ?? probeDriveLetter
     const present = await Promise.all(DRIVE_LETTERS.split('').map(async (letter) => {
-      const found = await probe(letter)
+      // Every probe — the default stat probe or a caller-injected one — runs
+      // under the same release bound, so one stalled volume never holds the list.
+      const found = await driveProbeWithinBound(probe(letter))
       signal?.throwIfAborted()
       return found ? letter : null
     }))
