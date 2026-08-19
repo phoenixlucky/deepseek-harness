@@ -12,7 +12,7 @@ import type { BigIntStats, Dirent, Stats } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { TextDecoder } from 'node:util'
 import { FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
-import { copyFileDaclWin32, replaceFileWin32 } from './win32.ts'
+import { copyFileDaclWin32, replaceFileWin32, win32BoundariesAvailable } from './win32.ts'
 
 const BINARY_SAMPLE_BYTES = 8192
 // Bound one non-abortable FileHandle.read so cancellation is observed between chunks.
@@ -548,8 +548,18 @@ export async function writeFileAtomic(
   const tempName = internals.tempName?.(absolutePath) ?? `${basename(absolutePath)}.tmp`
   const tempPath = join(stagingDir, tempName)
   const platform = internals.platform ?? process.platform
-  const copyFileDacl = internals.copyFileDacl ?? copyFileDaclWin32
-  const replaceFile = internals.replaceFile ?? replaceFileWin32
+  // koffi (the sole native bridge) is an optional dependency, so a host that
+  // cannot load it — an --ignore-scripts install, or no toolchain — degrades
+  // the Windows write path to a plain rename without the DACL copy. Safe
+  // because the destination is a fresh owner-only staging sibling. The probe
+  // runs only when a default native boundary would be used.
+  const nativeWin32 = platform === 'win32'
+    && (internals.copyFileDacl === undefined || internals.replaceFile === undefined)
+    && await win32BoundariesAvailable()
+  const copyFileDacl = internals.copyFileDacl
+    ?? (nativeWin32 ? copyFileDaclWin32 : async () => {})
+  const replaceFile = internals.replaceFile
+    ?? (nativeWin32 ? replaceFileWin32 : ((replaced, replacement) => rename(replacement, replaced)))
   const linkFile = internals.linkFile ?? link
   const inspectPublicationTarget = internals.inspectPublicationTarget
     ?? (path => lstat(path, { bigint: true }))

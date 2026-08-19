@@ -26,6 +26,8 @@ export interface DirectoryPickerHostFacts {
   env: DirectoryPickerEnv
   /** Whether a Linux chooser binary the native backend can drive (zenity/kdialog) is on PATH; consulted only when `platform` is linux. */
   linuxChooser: boolean
+  /** Whether the native backend can run here (its Windows koffi bridge loads); consulted before any platform that could serve it. */
+  nativeAvailable: boolean
 }
 
 /** An env value counts only when set and non-blank (an empty export is "unset" by shell convention). */
@@ -36,7 +38,8 @@ const present = (value: string | undefined): boolean => value !== undefined && v
  * the operator can see the host display and the native backend can serve it:
  * a loopback-only bind (an all-interfaces bind admits remote browsers no OS
  * chooser can reach), no SSH launch (under SSH port-forwarding the chooser
- * would open on the unattended server), and a servable display session —
+ * would open on the unattended server), a loadable native bridge (its Windows
+ * koffi binding is present), and a servable display session —
  * assumed on darwin/win32, requiring `DISPLAY`/`WAYLAND_DISPLAY` plus a
  * chooser binary on linux, and never true elsewhere (the native backend
  * drives exactly darwin/win32/linux). Anything ambiguous resolves to
@@ -47,6 +50,7 @@ const present = (value: string | undefined): boolean => value !== undefined && v
 export function resolveDirectoryPickerBackend(facts: DirectoryPickerHostFacts): DirectoryPickerBackendKind {
   if (facts.bindHost !== '127.0.0.1') return 'browse'
   if (present(facts.env.SSH_CONNECTION) || present(facts.env.SSH_TTY)) return 'browse'
+  if (!facts.nativeAvailable) return 'browse'
   if (facts.platform === 'darwin' || facts.platform === 'win32') return 'native'
   if (facts.platform !== 'linux' || !facts.linuxChooser) return 'browse'
   return present(facts.env.DISPLAY) || present(facts.env.WAYLAND_DISPLAY) ? 'native' : 'browse'

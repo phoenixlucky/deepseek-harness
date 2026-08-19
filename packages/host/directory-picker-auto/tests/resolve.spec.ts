@@ -12,12 +12,21 @@ const attended: DirectoryPickerHostFacts = {
   platform: 'darwin',
   env: {},
   linuxChooser: false,
+  nativeAvailable: true,
 }
 
 describe('resolveDirectoryPickerBackend', () => {
   it('resolves native for a loopback bind on a display platform', () => {
     expect(resolveDirectoryPickerBackend(attended)).toBe('native')
     expect(resolveDirectoryPickerBackend({ ...attended, platform: 'win32' })).toBe('native')
+  })
+
+  it('resolves browse when the native bridge is unavailable, even on a display platform', () => {
+    expect(resolveDirectoryPickerBackend({ ...attended, nativeAvailable: false })).toBe('browse')
+    expect(resolveDirectoryPickerBackend({ ...attended, platform: 'win32', nativeAvailable: false })).toBe('browse')
+    expect(resolveDirectoryPickerBackend({
+      ...attended, platform: 'linux', linuxChooser: true, env: { DISPLAY: ':0' }, nativeAvailable: false,
+    })).toBe('browse')
   })
 
   it('resolves browse for an all-interfaces bind regardless of other signals', () => {

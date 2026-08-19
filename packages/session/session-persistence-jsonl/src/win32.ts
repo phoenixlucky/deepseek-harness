@@ -6,12 +6,14 @@
  * fsync contract through Node, so the Windows path uses the native durable
  * namespace primitive instead: create a staging object in the target directory
  * and publish it with `MoveFileExW(..., MOVEFILE_WRITE_THROUGH)` without
- * replacement or cross-volume copy fallback.
+ * replacement or cross-volume copy fallback. koffi drives that primitive and
+ * is an optional dependency, so a host that cannot load it degrades to a plain
+ * Node rename instead of failing the boot.
  *
  * @module dsh-session-persistence-jsonl/win32
  */
 
-import { mkdtemp, rm, stat } from 'node:fs/promises'
+import { mkdtemp, rename, rm, stat } from 'node:fs/promises'
 import { join, parse, resolve, toNamespacedPath } from 'node:path'
 
 type MoveFileExW = (existing: string, replacement: string, flags: number) => number
@@ -36,16 +38,25 @@ const ERROR_FILE_EXISTS = 80
 const ERROR_INVALID_NAME = 123
 const ERROR_ALREADY_EXISTS = 183
 
-let bindings: Win32Bindings | undefined
+// undefined = not yet attempted; null = load failed (koffi unavailable).
+let bindings: Win32Bindings | null | undefined
 
 /** Load the small Win32 API lazily so non-Windows processes never load Koffi. */
-async function win32(): Promise<Win32Bindings> {
+async function win32(): Promise<Win32Bindings | null> {
   if (bindings !== undefined) return bindings
-  const koffi = (await import('koffi')).default
-  const kernel32 = koffi.load('kernel32.dll')
-  bindings = {
-    moveFileExW: kernel32.func('__stdcall', 'MoveFileExW', 'int', ['str16', 'str16', 'uint']) as MoveFileExW,
-    getLastError: kernel32.func('__stdcall', 'GetLastError', 'uint', []) as GetLastError,
+  try {
+    const koffi = (await import('koffi')).default
+    const kernel32 = koffi.load('kernel32.dll')
+    bindings = {
+      moveFileExW: kernel32.func('__stdcall', 'MoveFileExW', 'int', ['str16', 'str16', 'uint']) as MoveFileExW,
+      getLastError: kernel32.func('__stdcall', 'GetLastError', 'uint', []) as GetLastError,
+    }
+  } catch {
+    // koffi is optional: an absent or unbuildable native binding (e.g. an
+    // --ignore-scripts install on a host without a toolchain) records failure
+    // here so callers degrade instead of aborting. Only the koffi
+    // import/load can reach this block.
+    bindings = null
   }
   return bindings
 }
@@ -115,6 +126,14 @@ async function assertDirectory(path: string): Promise<boolean> {
  */
 export async function publishNewFileWin32(existing: string, replacement: string): Promise<void> {
   const api = await win32()
+  if (api === null) {
+    // koffi (optional) unavailable: fall back to a plain Node rename. Node's
+    // rename clobbers an existing target, unlike the native no-REPLACE move,
+    // so this degraded path loses the concurrent double-materialize guard;
+    // the single-process guard (rejectExistingLog) still holds.
+    await rename(existing, replacement)
+    return
+  }
   const ok = api.moveFileExW(toNamespacedPath(existing), toNamespacedPath(replacement), MOVEFILE_WRITE_THROUGH)
   if (ok === 0) throw win32Error('MoveFileExW', api.getLastError(), existing, replacement)
 }

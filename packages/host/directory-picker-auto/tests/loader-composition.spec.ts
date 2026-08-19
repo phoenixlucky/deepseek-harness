@@ -19,7 +19,7 @@ import Include from '@deepseek-ai/cordis-plugin-include'
 import HttpServer from '@deepseek-ai/dsh-host-webserver'
 import type { DirectoryPicker } from '@deepseek-ai/dsh-host-directory-picker'
 import BrowseDirectoryPicker from '@deepseek-ai/dsh-host-directory-picker-browse'
-import NativeDirectoryPicker from '@deepseek-ai/dsh-host-directory-picker-native'
+import NativeDirectoryPicker, { nativePickerAvailable } from '@deepseek-ai/dsh-host-directory-picker-native'
 import * as DirectoryPickerAuto from '../src/index.ts'
 
 const renameControl = vi.hoisted(() => ({
@@ -42,6 +42,17 @@ vi.mock('node:fs/promises', async (importOriginal) => {
       }
       await actual.rename(oldPath, newPath)
     },
+  }
+})
+
+// The native bridge depends on the optional koffi binding, whose presence is a
+// host property — not something the trusted real-composition cases should
+// chase. Default it to available and flip it in a dedicated degradation case.
+vi.mock('@deepseek-ai/dsh-host-directory-picker-native', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@deepseek-ai/dsh-host-directory-picker-native')>()
+  return {
+    ...actual,
+    nativePickerAvailable: vi.fn(async () => true),
   }
 })
 
@@ -195,6 +206,19 @@ describe('real Loader composition', () => {
   it('mounts the browse backend under an SSH launch', { timeout: 60_000 }, async () => {
     stubAttendedHost()
     vi.stubEnv('SSH_CONNECTION', '10.0.0.2 55 10.0.0.9 22')
+    const { ctx } = await loadComposition('127.0.0.1')
+
+    expect(entryNames(ctx)).toContain(BROWSE)
+    expect(entryNames(ctx)).toContain(BROWSE_SURFACE)
+    expect(entryNames(ctx)).not.toContain(NATIVE)
+    expect(entryNames(ctx)).not.toContain(NATIVE_SURFACE)
+    const picker = ctx.get('directoryPicker') as DirectoryPicker
+    expect(picker.capability().kind).toBe('browse')
+  })
+
+  it('degrades to the browse backend when the native bridge is unavailable', { timeout: 60_000 }, async () => {
+    stubAttendedHost()
+    vi.mocked(nativePickerAvailable).mockResolvedValueOnce(false)
     const { ctx } = await loadComposition('127.0.0.1')
 
     expect(entryNames(ctx)).toContain(BROWSE)

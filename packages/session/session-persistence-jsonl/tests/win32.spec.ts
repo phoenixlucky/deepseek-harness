@@ -141,6 +141,31 @@ describe('Windows durable namespace helpers', () => {
     expect(readFileSync(final, 'utf8')).toBe('content')
   })
 
+  it('falls back to a plain rename when koffi is unavailable', async () => {
+    vi.resetModules()
+    vi.doMock('koffi', () => { throw new Error('koffi native binding unavailable') })
+    const { publishNewFileWin32 } = await import('../src/win32.ts')
+    const root = await tempRoot()
+    const tmp = join(root, 'log.tmp')
+    const final = join(root, 'log.jsonl')
+    await writeFile(tmp, 'content')
+
+    await publishNewFileWin32(tmp, final)
+    expect(existsSync(tmp)).toBe(false)
+    expect(readFileSync(final, 'utf8')).toBe('content')
+  })
+
+  it('creates durable directories through the rename fallback when koffi is unavailable', async () => {
+    vi.resetModules()
+    vi.doMock('koffi', () => { throw new Error('koffi native binding unavailable') })
+    const { ensureDurableDirectoryWin32 } = await import('../src/win32.ts')
+    const root = await tempRoot()
+    const target = join(root, 'a', 'b')
+
+    await ensureDurableDirectoryWin32(target)
+    expect(existsSync(target)).toBe(true)
+  })
+
   it('maps Win32 publish failures to Node-style errno codes', async () => {
     const cases = [
       [ERROR_FILE_NOT_FOUND, 'ENOENT'],

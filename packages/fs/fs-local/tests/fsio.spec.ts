@@ -27,11 +27,23 @@ import type { LocalTarget } from '../src/fsio.ts'
 import { copyFileDaclWin32, readFileDaclWin32 } from '../src/win32.ts'
 import { FsError, FsTargetKey } from '@deepseek-ai/dsh-fs'
 
+// koffi is an optional host capability; only a host that can load it exercises
+// the native DACL integration below, so that case is gated on its presence
+// rather than assuming an install (cf. the src/win32.ts degradation).
+let win32NativeAvailable = false
+try {
+  await import('koffi')
+  win32NativeAvailable = true
+} catch {
+  /* koffi optional: absent bindings only gate the native-only case */
+}
+
 let dir: string
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'dsh-fsio-'))
 })
 afterEach(async () => {
+  vi.doUnmock('koffi')
   await rm(dir, { recursive: true, force: true })
 })
 
@@ -674,7 +686,7 @@ describe('writeFileAtomic — temp-file safety', () => {
     expect((await readdir(dir)).filter(n => n.includes('.tmp'))).toEqual([])
   })
 
-  it.skipIf(process.platform !== 'win32')('protects staged content with the existing target DACL and preserves it after replacement', async () => {
+  it.skipIf(process.platform !== 'win32' || !win32NativeAvailable)('protects staged content with the existing target DACL and preserves it after replacement', async () => {
     const file = join(dir, 'protected.txt')
     await writeFile(file, 'old')
     await copyFileDaclWin32(file, file)
@@ -749,6 +761,20 @@ describe('writeFileAtomic — temp-file safety', () => {
       replaceFile: async () => { throw denied },
     })).rejects.toBe(denied)
     expect(await readFile(file, 'utf8')).toBe('old')
+    expect((await readdir(dir)).filter(name => name.includes('.tmp'))).toEqual([])
+  })
+
+  it('falls back to a plain rename when the native Win32 boundary is unavailable', async () => {
+    vi.resetModules()
+    vi.doMock('koffi', () => { throw new Error('koffi native binding unavailable') })
+    const { writeFileAtomic: degradedWrite } = await import('../src/fsio.ts')
+    const file = join(dir, 'degraded.txt')
+    await writeFile(file, 'old')
+
+    // Without koffi the default boundaries degrade: no DACL copy, plan rename.
+    await degradedWrite(file, 'new', 0o666, undefined, { platform: 'win32' })
+
+    expect(await readFile(file, 'utf8')).toBe('new')
     expect((await readdir(dir)).filter(name => name.includes('.tmp'))).toEqual([])
   })
 

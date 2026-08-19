@@ -21,6 +21,9 @@
       "path": "../webserver"
     },
     {
+      "path": "../directory-picker-native"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

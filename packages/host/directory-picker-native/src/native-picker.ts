@@ -40,6 +40,29 @@ function rethrowIfAborted(signal: AbortSignal, error: unknown): void {
 }
 
 /**
+ * Whether the native picker can run on this host. Only the Windows backend
+ * needs koffi (an optional dependency) for its IFileOpenDialog bridge; darwin
+ * and linux drive OS chooser binaries and never load koffi. Any other platform
+ * is unsupported.
+ * @param platform - the host platform (injected for deterministic tests).
+ * @returns true when the native picker can serve `platform`.
+ */
+export async function nativePickerAvailable(platform: NodeJS.Platform = process.platform): Promise<boolean> {
+  if (platform === 'win32') {
+    try {
+      await import('koffi')
+      return true
+    } catch {
+      // koffi is optional: an absent or unbuildable binding means the native
+      // picker cannot open; the auto chooser then mounts the browse backend.
+      // Only the optional koffi import can reach this block.
+      return false
+    }
+  }
+  return platform === 'darwin' || platform === 'linux'
+}
+
+/**
  * Open the platform directory picker.
  * @param signal - caller/connection lifetime; abort terminates the native command.
  * @param internals - Platform and runner hooks for deterministic tests.

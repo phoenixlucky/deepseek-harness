@@ -143,4 +143,14 @@ describe('Windows file-security helpers', () => {
       path: 'target',
     })
   })
+
+  it('reports the boundaries unavailable and surfaces a clear error when koffi cannot load', async () => {
+    vi.resetModules()
+    vi.doMock('koffi', () => { throw new Error('koffi native binding unavailable') })
+    const mod = await import('../src/win32.ts')
+
+    expect(await mod.win32BoundariesAvailable()).toBe(false)
+    await expect(mod.replaceFileWin32('target', 'temp')).rejects.toThrow(/koffi native binding/)
+    await expect(mod.copyFileDaclWin32('source', 'temp')).rejects.toThrow(/koffi native binding/)
+  })
 })

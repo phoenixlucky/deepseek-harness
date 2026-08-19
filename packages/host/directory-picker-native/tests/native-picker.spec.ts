@@ -21,7 +21,7 @@ const { execFileMock } = vi.hoisted(() => ({ execFileMock: vi.fn<ExecFileMock>()
 vi.mock('node:child_process', () => ({ execFile: execFileMock }))
 
 import { describe, expect, it, vi } from 'vitest'
-import { pickNativeDirectory, type DirectoryPickerRunner } from '../src/native-picker.ts'
+import { nativePickerAvailable, pickNativeDirectory, type DirectoryPickerRunner } from '../src/native-picker.ts'
 
 function failure(code: string | number, stderr = ''): Error {
   return Object.assign(new Error(`command failed: ${String(code)}`), { code, stderr })
@@ -177,5 +177,25 @@ describe('native directory picker', () => {
 
   it('reports unsupported platforms', async () => {
     await expect(pickNativeDirectory(signal(), { platform: 'aix' })).rejects.toThrow('unsupported on aix')
+  })
+})
+
+describe('nativePickerAvailable', () => {
+  it('reports true for chooser-binary platforms and false elsewhere, without koffi', async () => {
+    expect(await nativePickerAvailable('darwin')).toBe(true)
+    expect(await nativePickerAvailable('linux')).toBe(true)
+    expect(await nativePickerAvailable('freebsd')).toBe(false)
+  })
+
+  it('gates the Windows backend on the optional koffi binding', async () => {
+    vi.resetModules()
+    vi.doMock('koffi', () => ({ default: {} }))
+    const withKoffi = await import('../src/native-picker.ts')
+    expect(await withKoffi.nativePickerAvailable('win32')).toBe(true)
+
+    vi.resetModules()
+    vi.doMock('koffi', () => { throw new Error('koffi native binding unavailable') })
+    const withoutKoffi = await import('../src/native-picker.ts')
+    expect(await withoutKoffi.nativePickerAvailable('win32')).toBe(false)
   })
 })

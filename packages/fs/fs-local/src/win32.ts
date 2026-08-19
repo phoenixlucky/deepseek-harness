@@ -1,6 +1,7 @@
 /**
  * Windows security-descriptor helpers for atomic local-file replacement. Koffi loads lazily so
- * non-Windows processes never open Win32 libraries.
+ * non-Windows processes never open Win32 libraries; koffi is an optional dependency, so a host
+ * that cannot load its native binding degrades callers to the pure-Node boundaries.
  * @module @deepseek-ai/dsh-fs-local/win32
  */
 
@@ -41,20 +42,43 @@ const ERROR_FILE_NOT_FOUND = 2
 const ERROR_PATH_NOT_FOUND = 3
 const ERROR_ACCESS_DENIED = 5
 
-let bindings: Win32Bindings | undefined
+// undefined = not yet attempted; null = load failed (koffi unavailable).
+let bindings: Win32Bindings | null | undefined
 
-async function win32(): Promise<Win32Bindings> {
+async function win32(): Promise<Win32Bindings | null> {
   if (bindings !== undefined) return bindings
-  const koffi = (await import('koffi')).default
-  const advapi32 = koffi.load('advapi32.dll')
-  const kernel32 = koffi.load('kernel32.dll')
-  bindings = {
-    getFileSecurityW: advapi32.func('int __stdcall GetFileSecurityW(const char16_t *path, uint32_t requested, void *descriptor, uint32_t length, _Out_ uint32_t *needed)') as GetFileSecurityW,
-    setFileSecurityW: advapi32.func('int __stdcall SetFileSecurityW(const char16_t *path, uint32_t information, const void *descriptor)') as SetFileSecurityW,
-    replaceFileW: kernel32.func('int __stdcall ReplaceFileW(const char16_t *replaced, const char16_t *replacement, const char16_t *backup, uint32_t flags, void *exclude, void *reserved)') as ReplaceFileW,
-    getLastError: kernel32.func('uint32_t __stdcall GetLastError()') as GetLastError,
+  try {
+    const koffi = (await import('koffi')).default
+    const advapi32 = koffi.load('advapi32.dll')
+    const kernel32 = koffi.load('kernel32.dll')
+    bindings = {
+      getFileSecurityW: advapi32.func('int __stdcall GetFileSecurityW(const char16_t *path, uint32_t requested, void *descriptor, uint32_t length, _Out_ uint32_t *needed)') as GetFileSecurityW,
+      setFileSecurityW: advapi32.func('int __stdcall SetFileSecurityW(const char16_t *path, uint32_t information, const void *descriptor)') as SetFileSecurityW,
+      replaceFileW: kernel32.func('int __stdcall ReplaceFileW(const char16_t *replaced, const char16_t *replacement, const char16_t *backup, uint32_t flags, void *exclude, void *reserved)') as ReplaceFileW,
+      getLastError: kernel32.func('uint32_t __stdcall GetLastError()') as GetLastError,
+    }
+  } catch {
+    // koffi is optional: an absent or unbuildable native binding (e.g. an
+    // --ignore-scripts install on a host without a toolchain) records failure
+    // here so callers can degrade instead of aborting the boot. Only the koffi
+    // import/load can reach this block.
+    bindings = null
   }
   return bindings
+}
+
+function nativeUnavailable(caller: string): Error {
+  return new Error(`${caller} requires the koffi native binding, which is not available on this host`)
+}
+
+/**
+ * Whether the Win32 DACL/replacement boundaries can run on this host: true only
+ * when koffi (the sole native bridge, an optional dependency) loads. Non-Windows
+ * hosts report false without ever importing koffi.
+ * @returns true when the native Win32 boundaries are usable.
+ */
+export async function win32BoundariesAvailable(): Promise<boolean> {
+  return (await win32()) !== null
 }
 
 function errnoCode(win32Code: number): string {
@@ -87,6 +111,7 @@ function win32Error(syscall: string, win32Code: number, path: string): Win32Errn
  */
 export async function readFileDaclWin32(path: string): Promise<Buffer> {
   const api = await win32()
+  if (api === null) throw nativeUnavailable('readFileDaclWin32')
   const nativePath = toNamespacedPath(path)
   const needed: [number] = [0]
   api.getFileSecurityW(nativePath, DACL_SECURITY_INFORMATION, null, 0, needed)
@@ -108,6 +133,7 @@ export async function readFileDaclWin32(path: string): Promise<Buffer> {
 export async function copyFileDaclWin32(source: string, destination: string): Promise<void> {
   const descriptor = await readFileDaclWin32(source)
   const api = await win32()
+  if (api === null) throw nativeUnavailable('copyFileDaclWin32')
   const information = (DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION) >>> 0
   if (api.setFileSecurityW(toNamespacedPath(destination), information, descriptor) === 0) {
     throw win32Error('SetFileSecurityW', api.getLastError(), destination)
@@ -121,6 +147,7 @@ export async function copyFileDaclWin32(source: string, destination: string): Pr
  */
 export async function replaceFileWin32(replaced: string, replacement: string): Promise<void> {
   const api = await win32()
+  if (api === null) throw nativeUnavailable('replaceFileWin32')
   if (api.replaceFileW(
     toNamespacedPath(replaced),
     toNamespacedPath(replacement),

@@ -14,7 +14,7 @@ import type { DirectoryPickerCapability } from '@deepseek-ai/dsh-host-directory-
 import { pickNativeDirectory } from './native-picker.ts'
 
 export type { DirectoryPickerInternals, DirectoryPickerRunner } from './native-picker.ts'
-export { pickNativeDirectory } from './native-picker.ts'
+export { nativePickerAvailable, pickNativeDirectory } from './native-picker.ts'
 
 /** The `ctx.directoryPicker` native implementation (stable capability object per service life). */
 export default class NativeDirectoryPicker extends DirectoryPicker {
