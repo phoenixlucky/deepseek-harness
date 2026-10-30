@@ -10,6 +10,7 @@ This design adds read-only runtime inventories for tool registrations and MCP cl
 
 - [Problem](#problem)
 - [Design](#design)
+- [Management plugin](#management-plugin)
 - [Data and lifecycle](#data-and-lifecycle)
 - [Compatibility and privacy](#compatibility-and-privacy)
 - [Validation](#validation)
@@ -25,9 +26,15 @@ The first phase supplies that view to future management surfaces. It does not ch
 
 `dsh-tools` exposes immutable snapshots of active tool registrations through its existing `ctx.tools` service. Each row contains the tool name, optional Cordis plugin identity, whether the registration is global or scoped, and whether it has a conditional activation callback. The API returns registrations, not the scope's effective visible tool list; existing `get()`, `definitions()`, and `schemas()` keep their current meanings.
 
-`dsh-mcp-client` exposes a separate read-only inventory of live MCP client instances. Each row contains `serverName`, optional Cordis plugin identity, the connection lifecycle state, and the currently registered public tool names. The connection supervisor owns state transitions and updates the inventory as connections start, reconnect, fail, or dispose. MCP inventory registration uses the same Cordis effect lifetime as the client instance.
+`dsh-mcp-client` adds a `mcpClientRegistry` service for live MCP client instances. It exposes detached read-only snapshots; each row contains `serverName`, optional Cordis plugin identity, the connection lifecycle state, and the currently registered public tool names. The connection supervisor owns state transitions and updates the registry as connections start, reconnect, fail, or dispose. Each instance's record uses the same Cordis effect lifetime as its connection. The registry provider is composed in the shared base profile so the Host inventory can query it even when no MCP server is configured.
 
-Both inventories are core package APIs. A later management plugin may read them to render diagnostics, but it does not own conflict enforcement or registration cleanup.
+The existing Host `pluginInventory/list` Remote combines both inventories with the Loader and preset data it already returns. Its tool and MCP fields are optional so a profile that does not compose a registry can still return its existing snapshot.
+
+## Management plugin
+
+The independent project in `E:\home\dsh_plugin_manager_wj` becomes a client-only DSH plugin. It adds a runtime-registration view to the existing Built-in plugins Settings section and reads the combined data through `pluginInventory/list`; it adds no Host data cache or second Remote protocol. The view presents tool names, owners, scope, conditional activation, MCP server names, connection state, and public tool names. It supports search and manual refresh, and remains read-only.
+
+The plugin uses the existing Settings slot, locale service, and UI primitives. Its package declares the `dsh.client` entry and the DSH Remote dependency, so users can install or remove the view independently after running a Harness version that supplies the expanded inventory. The plugin does not change plugin composition, MCP configuration, tool registrations, or conflict decisions.
 
 ## Data and lifecycle
 
@@ -45,8 +52,8 @@ When Cordis cannot identify an owner, the API represents that absence explicitly
 
 ## Validation
 
-Tests cover global and scoped tool ownership, owner absence, immutable snapshots, duplicate rejection, conditional registration metadata, MCP state transitions, unique `serverName` ownership, and row removal after disposal and HMR. Package documentation describes the snapshot fields and privacy limits. Existing tool and MCP lifecycle tests remain unchanged unless their assertions need to cover the new read-only views.
+Tests cover global and scoped tool ownership, owner absence, immutable snapshots, duplicate rejection, conditional registration metadata, MCP state transitions, unique `serverName` ownership, and row removal after disposal and HMR. Host inventory tests verify the combined payload and profiles without MCP instances. The independent plugin tests cover the loading, empty, error, retry, search, and rendered-state cases. Its package documentation describes installation and the displayed data. Core package documentation describes snapshot fields and privacy limits.
 
 ## Out of scope
 
-This phase does not add a management UI, plugin enable or disable controls, automatic conflict repair, configuration-source tracing, persistent conflict history, a generic registry for every Harness service, or new configuration precedence rules.
+This phase does not add plugin enable or disable controls, automatic conflict repair, configuration-source tracing, persistent conflict history, a generic registry for every Harness service, or new configuration precedence rules.

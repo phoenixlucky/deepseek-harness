@@ -10,6 +10,7 @@
 
 - [问题](#problem)
 - [设计](#design)
+- [管理插件](#management-plugin)
 - [数据与生命周期](#data-and-lifecycle)
 - [兼容性与隐私](#compatibility-and-privacy)
 - [验证](#validation)
@@ -25,9 +26,15 @@ Harness 已经会拒绝同一注册作用域内的重复工具名，会在 MCP �
 
 `dsh-tools` 通过现有的 `ctx.tools` 服务公开活动工具注册的不可变快照。每条记录包含工具名、可选的 Cordis 插件身份、注册是全局还是作用域内，以及是否声明了条件激活回调。该 API 返回注册记录，不返回某个作用域最终可见的工具列表；现有 `get()`、`definitions()` 和 `schemas()` 语义保持不变。
 
-`dsh-mcp-client` 单独公开活动 MCP Client 实例的只读清单。每条记录包含 `serverName`、可选的 Cordis 插件身份、连接生命周期状态，以及当前已注册的公开工具名。连接 supervisor 负责状态变化，并在连接启动、重连、失败或卸载时更新清单。MCP 清单记录与 Client 实例使用相同的 Cordis effect 生命周期。
+`dsh-mcp-client` 增加 `mcpClientRegistry` 服务来管理活动 MCP Client 实例。该服务返回分离的只读快照；每条记录包含 `serverName`、可选的 Cordis 插件身份、连接生命周期状态，以及当前已注册的公开工具名。连接 supervisor 负责状态变化，并在连接启动、重连、失败或卸载时更新注册表。每个实例的记录与其连接使用相同的 Cordis effect 生命周期。共享 base profile 会组合注册表提供方，因此即使未配置 MCP Server，Host Inventory 也能查询该服务。
 
-两个清单都是核心包 API。后续管理插件可以读取它们来展示诊断信息，但冲突执行和注册清理仍由底层服务负责。
+现有 Host `pluginInventory/list` Remote 会把两个清单与它已有的 Loader 和 preset 数据合并返回。工具和 MCP 字段都是可选项，因此未组合对应注册表的 profile 仍可返回原有快照。
+
+## 管理插件
+
+`E:\home\dsh_plugin_manager_wj` 中的独立项目将成为仅含 Client 端的 DSH 插件。它会在现有“内置插件”设置区域增加运行时注册视图，并通过 `pluginInventory/list` 读取合并数据；不添加 Host 数据缓存，也不另建 Remote 协议。视图展示工具名、所有者、作用域、条件激活状态、MCP Server 名称、连接状态和公开工具名。它支持搜索和手动刷新，并保持只读。
+
+插件使用现有 Settings 插槽、本地化服务和 UI 基础组件。其 package 声明 `dsh.client` 入口和 DSH Remote 依赖，因此用户可以在 Harness 提供扩展清单的版本上独立安装或移除此视图。插件不会修改插件组合、MCP 配置、工具注册或冲突裁决。
 
 ## 数据与生命周期
 
@@ -45,8 +52,8 @@ Cordis 无法识别所有者时，API 会明确表示身份缺失。API 不读�
 
 ## 验证
 
-测试覆盖全局和作用域内的工具所有权、所有者缺失、不可变快照、重复注册拦截、条件注册元数据、MCP 状态转换、`serverName` 唯一性，以及卸载和 HMR 后的记录清理。包文档说明快照字段和隐私限制。现有工具和 MCP 生命周期测试保持原样，只有需要覆盖新只读视图的断言才会更新。
+测试覆盖全局和作用域内的工具所有权、所有者缺失、不可变快照、重复注册拦截、条件注册元数据、MCP 状态转换、`serverName` 唯一性，以及卸载和 HMR 后的记录清理。Host Inventory 测试验证组合后的 payload 和无 MCP 实例的 profile。独立插件测试覆盖加载、空状态、错误、重试、搜索和状态呈现。插件包文档说明安装方式和展示的数据；核心包文档说明快照字段和隐私限制。
 
 ## 范围之外
 
-本阶段不包含管理界面、插件启停控制、自动冲突修复、配置来源追踪、持久化冲突历史、覆盖所有 Harness 服务的通用注册表，也不新增配置优先级规则。
+本阶段不包含插件启停控制、自动冲突修复、配置来源追踪、持久化冲突历史、覆盖所有 Harness 服务的通用注册表，也不新增配置优先级规则。
