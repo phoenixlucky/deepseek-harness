@@ -435,6 +435,10 @@
     - id: ui-settings-plugins
       name: '@deepseek-ai/dsh-client-ui-settings-plugins'
 
+    # MCP server drafts and export tools in the Settings navigation.
+    - id: ui-settings-mcp
+      name: '@deepseek-ai/dsh-client-ui-settings-mcp'
+
     # The official settings pages: one companion package per host-plane
     # namespace, each registering its page into the Plugins page while the
     # Host serves the namespace.

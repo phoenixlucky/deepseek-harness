@@ -19,7 +19,10 @@ import Include, { applyEntryPatches, entryListSchema, type PatchOptions } from '
 import Group from '@deepseek-ai/cordis-plugin-group'
 import { dshHomePath, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { createLaunchEnvironmentSnapshot, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
-export { readBundlePatches, readProfilePatches, resolveTelemetryPatch, type ProfileContext, type ProfilePnpmInvocation } from './profile-context.ts'
+export {
+  describeConfigSources, readBundlePatches, readConfigSourceLayers, readProfilePatches, resolveTelemetryPatch,
+  type ConfigFieldSources, type ConfigSourceLayer, type ProfileContext, type ProfilePnpmInvocation,
+} from './profile-context.ts'
 export { sanitizeProfile } from './profile-sanitize.ts'
 export { getDshRuntimeVersion, evaluatePluginCompatibility, pluginCompatibilityWarning, type PluginCompatibility } from './plugin-compatibility.ts'
 export {
@@ -256,8 +259,6 @@ export function loadLayeredEnv(
   ])
 }
 
-const bootstrapIncludes = new WeakMap<Context, Entry>()
-
 // The include's YAML dialect (`!!js` scalars become expression nodes the
 // Loader interpolates against each entry's injection-ready context), imported
 // from the include itself so patch parsing and config dumping can never drift
@@ -331,8 +332,14 @@ async function recompose(
   // The rows stopped first, which a failure before the generation applies puts back.
   let stopped: StoppedRow[] = []
   try {
-    const entry = bootstrapIncludes.get(ctx)
-    if (entry === undefined) throw new Error(`${binName}: profile reload requires the root Include entry`)
+    let entry: Entry
+    try {
+      // Resolve the pinned root id from Loader so this works across module
+      // copies used by the launcher and profile plugins.
+      entry = ctx.loader.resolve('include')
+    } catch (cause) {
+      throw new Error(`${binName}: profile reload requires the root Include entry`, { cause })
+    }
     // Reading the prior state imports nothing, so plugin code does not run before the next resolution publishes.
     const previousFailures = (await inactiveEntries(ctx, false)).map((failure): RecordedFailure => ({
       entry: failure.entry, fiber: failure.entry.fiber, options: JSON.stringify(failure.entry.options),
@@ -783,7 +790,6 @@ export async function mountRootInclude(
   const loader = ctx.get('loader')
   if (loader === undefined) return undefined
   const entry = loader.resolve(includeId)
-  bootstrapIncludes.set(ctx, entry)
   return entry
 }
 
@@ -1159,7 +1165,7 @@ export async function auditStartupEntries(
   warn: (line: string) => void = line => void process.stderr.write(line),
 ): Promise<void> {
   const failures = await inactiveEntries(ctx)
-  const required = new Set(failures.filter(({ entry }) => entry === bootstrapIncludes.get(ctx)
+  const required = new Set(failures.filter(({ entry }) => entry.options.id === 'include'
     || requiredStartupEntryIds.has(entry.options.id)).map(({ entry }) => entry))
   if (required.size > 0) {
     throw new StartupError(startupDiagnostic(binName, failures, required), failures.map(({ entry, outcome }) => ({

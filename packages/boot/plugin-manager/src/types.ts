@@ -2,6 +2,7 @@
 import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { PluginLocalizedMeta } from '@deepseek-ai/dsh-package-manifest'
 import type { PluginInventoryEntry } from '@deepseek-ai/dsh-host-plugin-inventory/types'
+export type { ConfigFieldSources } from '@deepseek-ai/dsh-app-boot'
 export type { PluginEntryId } from '@deepseek-ai/dsh-host-plugin-inventory/types'
 import type { PluginEntryId } from '@deepseek-ai/dsh-host-plugin-inventory/types'
 import type {} from '@deepseek-ai/dsh-typert-protocol'
@@ -9,6 +10,14 @@ import type { DetailFailureReason } from '@deepseek-ai/dsh-plugin-detail/types'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
+    /** A preview expired or its finding/target changed before it was applied. */
+    'plugin-manager/stale-remediation-preview': { readonly previewId: PluginRemediationPreviewId }
+    /** The requested remediation is not eligible for the current finding. */
+    'plugin-manager/unsupported-remediation': { readonly findingId: string }
+    /** The preview requires an explicit confirmation. */
+    'plugin-manager/remediation-confirmation-required': { readonly previewId: PluginRemediationPreviewId }
+    /** The requested Loader entry is no longer present. */
+    'plugin-manager/unknown-plugin': { readonly id: PluginEntryId }
     /** The profile lists no such bundle, or its directory cannot be resolved. */
     'plugin-manager/unknown-bundle': { readonly name: string }
     /** The display language is not a BCP 47 language id. */
@@ -56,6 +65,66 @@ export type PluginInfo = PluginInventoryEntry & (
   | { patchId: string; readOnlyReason?: never }
   | { patchId?: never; readOnlyReason: ReadOnlyReason }
 )
+
+/** Severity assigned to a current, evidence-backed management finding. */
+export type PluginFindingSeverity = 'error' | 'warning' | 'info'
+
+/** Safe current-state evidence attached to a health finding. */
+export type PluginFindingEvidence =
+  | { readonly kind: 'lifecycle'; readonly phase: 'failed' }
+  | { readonly kind: 'tool-name'; readonly name: string; readonly registrations: number }
+  | { readonly kind: 'mcp-name'; readonly serverName: string; readonly registrations: number }
+  | { readonly kind: 'mcp-state'; readonly serverName: string; readonly state: 'failed' | 'reconnecting' }
+  | { readonly kind: 'bundle'; readonly packageName: string; readonly reason: 'compatibility' | 'dependency'; readonly incompatible?: readonly IncompatiblePlugin[] }
+
+/** One issue derived from the Host's current Loader or registration state. */
+export interface PluginFinding {
+  readonly id: string
+  readonly code: 'plugin.activation-failed' | 'tool.duplicate-name' | 'mcp.connection-failed' | 'mcp.duplicate-name'
+    | 'bundle.compatibility-rejected' | 'bundle.dependency-invalid'
+  readonly severity: PluginFindingSeverity
+  readonly affectedEntryIds: readonly PluginEntryId[]
+  readonly evidence: PluginFindingEvidence
+  readonly remediationEntryIds: readonly PluginEntryId[]
+}
+
+/** Summary counts and current findings; the Host keeps no durable second history. */
+export interface PluginHealthSnapshot {
+  readonly generatedAt: number
+  readonly pluginCount: number
+  readonly enabledCount: number
+  readonly failedCount: number
+  readonly writableCount: number
+  readonly findings: readonly PluginFinding[]
+}
+
+/** Optional filter for current conflict findings. */
+export interface ConflictQuery {
+  readonly entryId?: PluginEntryId
+  readonly severity?: PluginFindingSeverity
+}
+
+/** Exact finding and plugin entry named by a typed remediation preview request. */
+export interface PluginRemediationRequest {
+  readonly findingId: string
+  readonly targetEntryId: PluginEntryId
+}
+
+/** Process-local identifier for one exact previewed operation. */
+export type PluginRemediationPreviewId = Branded<'PluginRemediationPreviewId'>
+
+/** Preview of disabling one plugin entry to resolve an identified finding. */
+export interface PluginRemediationPreview {
+  readonly previewId: PluginRemediationPreviewId
+  readonly findingId: string
+  readonly findingRevision: string
+  readonly targetEntryId: PluginEntryId
+  readonly expectedEnabled: true
+  readonly risk: 'low' | 'high'
+  readonly reversible: true
+  readonly requiresConfirmation: boolean
+  readonly effect: 'disable-plugin-entry'
+}
 
 /** One row a bundle's patch declares, with its live entry while the bundle contributes it. */
 export interface BundleRowInfo {

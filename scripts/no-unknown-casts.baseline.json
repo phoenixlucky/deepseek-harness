@@ -742,9 +742,6 @@
   "packages/client/ui-workspace/tests/apply.client.spec.ts": {
     "b467270b0c2a95d6b29939f6baf4d5c8e5031e99a1d15437a3060f35735d8d37": 1
   },
-  "packages/client/web/tests/boot-client.client.spec.ts": {
-    "5120c3da1b5c58832ad2e2fa40567b8c7ea59e7ebb53058f45eda7ea95b2620d": 1
-  },
   "packages/compaction/command-compact/tests/command-compact.spec.ts": {
     "439249ecfa0f0b09db43b475a9c50602ae19f2d7d6919522a8c44bc71912aad4": 1
   },

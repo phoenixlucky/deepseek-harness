@@ -4,7 +4,7 @@
  * activation. `AppWebEntry` and the whole-client test carrier both call it.
  * @module @deepseek-ai/dsh-client-web/src/boot-client
  */
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context, Fiber } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import type { BootManifest, ClientModuleLoader } from '@deepseek-ai/dsh-client-modules/client'
 import { STATE_LABELS } from './loader-status.ts'
@@ -80,10 +80,24 @@ export function assertEntriesActive(ctx: Context, modules: Pick<ClientModuleLoad
       const missing = Object.keys(entry.fiber.inject).filter(service => ctx.get(service) === undefined)
       failures.push(`${name}: pending (waiting for service${missing.length === 1 ? '' : 's'}: ${missing.join(', ') || 'unknown'})`)
     } else {
-      failures.push(`${name}: ${state}`)
+      const detail = state === 'failed' ? activationError(ctx, entry.fiber) : undefined
+      failures.push(`${name}: ${state}${detail === undefined ? '' : `: ${detail}`}`)
     }
   }
   if (failures.length > 0) {
     throw new Error(`web boot: ${String(failures.length)} entr${failures.length === 1 ? 'y' : 'ies'} did not activate\n${failures.join('\n')}`)
   }
+}
+
+/** Find the last error the failed plugin fiber recorded through Cordis logger. */
+function activationError(ctx: Context, fiber: Fiber): string | undefined {
+  const buffer = ctx.logger.buffer
+  for (let index = buffer.length - 1; index >= 0; index--) {
+    const message = buffer[index]
+    if (message === undefined) continue
+    if (message.type !== 'error' || message.fiber?.deref() !== fiber) continue
+    const value = message.args[0]
+    if (value !== undefined) return value instanceof Error ? value.stack ?? value.message : String(value)
+  }
+  return undefined
 }

@@ -41,7 +41,7 @@ Desktop 的固定快捷键 `Cmd`/`Ctrl` + `+`（或 `=`）和 `Cmd`/`Ctrl` + `-`
 
 ### 注册主题
 
-组合可以通过 `ctx.theme` 注册带别名 token 覆盖的第三方主题 id；覆盖层按注册顺序折入活动快照的 token 中。主题还可以替换产品图标：`ThemeDefinition.icons` 把 ui-primitives `ICON_SYMBOLS` 的 id 映射到完整的 SVG 文档。插件在 `body` 开头保留一个隐藏的图标 sprite，其 `<symbol>` 子元素采用活动主题的替换项，缺省时回退到默认值，因此替换图形可以是多色的，并可使用跟随调色板的 `currentColor` 或 `--dsw-*` 变量绘制。替换标记与注册它的插件代码同等受信任。`register` 会拒绝未知 id、根元素不是带 `viewBox` 且格式正确的 SVG 命名空间 `<svg>` 的文档、会作用于整个文档的 `<style>` 或 `<script>` 元素，以及不以 `<symbol id>-` 开头的元素 id。根元素的 `width`、`height`、`class` 和 `aria-hidden` 会被忽略，因为图标尺寸由使用处决定。渐变及其他绘制服务器在 sprite 中解析其色标，因此会跟随调色板 token，但不跟随使用处的颜色覆盖。移除其中一个绝不会覆盖最后一个持久化的内置偏好。第三方主题 id 仍是进程内扩展，不会跨越内置 settings schema。
+组合可以通过 `ctx.theme` 注册带别名 token 覆盖的第三方主题 id；覆盖层按注册顺序折入活动快照的 token 中。主题还可以替换产品图标：`ThemeDefinition.icons` 把 ui-primitives `ICON_SYMBOLS` 的 id 映射到完整的 SVG 文档。插件在 `body` 开头保留一个隐藏的图标 sprite，其 `<symbol>` 子元素采用活动主题的替换项，缺省时回退到默认值，因此替换图形可以是多色的，并可使用跟随调色板的 `currentColor` 或 `--dsw-*` 变量绘制。替换标记与注册它的插件代码同等受信任。`register` 会拒绝未知 id、根元素不是带 `viewBox` 且格式正确的 SVG 命名空间 `<svg>` 的文档、会作用于整个文档的 `<style>` 或 `<script>` 元素，以及不以 `<symbol id>-` 开头的元素 id。根元素的 `width`、`height`、`class` 和 `aria-hidden` 会被忽略，因为图标尺寸由使用处决定。渐变及其他绘制服务器在 sprite 中解析其色标，因此会跟随调色板 token，但不跟随使用处的颜色覆盖。移除其中一个绝不会覆盖最后一个持久化的内置偏好。已选中的第三方主题会在无关设置更新时保持活动，但其 id 不存入内置 settings schema，因此重新加载后不会恢复。
 
 ### 插件前调色板
 

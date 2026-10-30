@@ -11,6 +11,48 @@ export interface ProfilePnpmInvocation {
   readonly env: Readonly<Record<string, string>>
 }
 
+/** One parsed configuration patch layer with a path-free display identity. */
+export interface ConfigSourceLayer {
+  readonly layer: 'bundle' | 'profile' | 'home' | 'invocation'
+  readonly identity: string
+  readonly patches: readonly PatchOptions[]
+}
+
+/** Source metadata for one schema field; configuration values never leave the Host. */
+export interface ConfigFieldSources {
+  readonly fieldPath: readonly string[]
+  readonly effective: Pick<ConfigSourceLayer, 'layer' | 'identity'> | null
+  readonly shadowed: readonly Pick<ConfigSourceLayer, 'layer' | 'identity'>[]
+}
+
+/**
+ * Find patch layers that define a field on a Loader entry, preserving precedence order.
+ * @param layers - Configuration layers from lowest to highest precedence.
+ * @param entryId - Stable Loader entry identity.
+ * @param fieldPath - Schema field path to inspect.
+ * @returns The winning and shadowed source identities without configuration values.
+ */
+export function describeConfigSources(
+  layers: readonly ConfigSourceLayer[], entryId: string, fieldPath: readonly string[],
+): ConfigFieldSources {
+  const sources = layers.flatMap(layer => layer.patches.some(patch => patch.id === entryId
+    && hasConfigPath(patch.config, fieldPath)) ? [{ layer: layer.layer, identity: layer.identity }] : [])
+  return {
+    fieldPath: [...fieldPath],
+    effective: sources.at(-1) ?? null,
+    shadowed: sources.slice(0, -1),
+  }
+}
+
+function hasConfigPath(value: unknown, path: readonly string[]): boolean {
+  let current = value
+  for (const key of path) {
+    if (typeof current !== 'object' || current === null || !Object.hasOwn(current, key)) return false
+    current = Reflect.get(current, key)
+  }
+  return path.length > 0
+}
+
 /** Current profile facts; scheduling and mutation belong to their callers. */
 export interface ProfileContext {
   readonly name: string
@@ -82,4 +124,25 @@ export function readProfilePatches(binName: string, context: ProfileContext, ini
     composeEntries([patches]).some(row => row.id === TELEMETRY_ROW_ID))
   if (telemetryPatch !== undefined) patches.push(telemetryPatch)
   return patches
+}
+
+/** Read the current profile, home, and invocation layers as path-free source records.
+ * @param binName Diagnostic prefix for malformed or missing configuration.
+ * @param context Data supplied by the profile launcher.
+ * @param initialProfile Already loaded startup profile; omitted reads the current files.
+ * @returns Patch layers in precedence order, without copying raw values to callers.
+ */
+export function readConfigSourceLayers(
+  binName: string, context: ProfileContext, initialProfile?: Profile,
+): ConfigSourceLayer[] {
+  const profile = initialProfile ?? loadProfileDirectory(binName, context.dir, context.installAnchor)
+  const homePatches = loadOptionalPatches(binName, join(context.home, PROFILE_PATCH_FILENAME)) ?? []
+  return [
+    ...profile.layers.map(({ packageName, patches }): ConfigSourceLayer => ({
+      layer: 'bundle', identity: packageName, patches,
+    })),
+    { layer: 'profile', identity: context.name, patches: profile.patches },
+    { layer: 'home', identity: 'home', patches: homePatches },
+    { layer: 'invocation', identity: 'command-line', patches: context.overlays },
+  ]
 }

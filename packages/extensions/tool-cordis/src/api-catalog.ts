@@ -2228,6 +2228,39 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'Current runtime entries with persistent patch targets.',
       },
       {
+        signature: '@Remote async getConfigSources(id: PluginEntryId, fields: readonly (readonly string[])[]): Promise<ConfigFieldSources[]>',
+        description: 'Describe which profile patch layers define schema fields for one Loader entry.',
+        parameters: [{ name: 'id', description: 'Loader entry identity returned by `listPlugins`.' }, { name: 'fields', description: 'Schema field paths requested by the Client.' }],
+        returns: 'Effective and shadowed source identities without configuration values or file paths.',
+        throws: ['`plugin-manager/unknown-plugin` when the entry is no longer present.'],
+      },
+      {
+        signature: '@Remote async getHealthSnapshot(): Promise<PluginHealthSnapshot>',
+        description: 'Read a current summary and evidence-backed findings from Host-owned runtime state.',
+        parameters: [],
+        returns: 'Plugin status counts and current findings; nothing is written to a durable history.',
+      },
+      {
+        signature: '@Remote async getConflicts(query?: ConflictQuery): Promise<PluginFinding[]>',
+        description: 'Query current findings without retaining a separate history.',
+        parameters: [{ name: 'query', description: 'Optional entry and severity filters.' }],
+        returns: 'Current findings that match the filter.',
+      },
+      {
+        signature: '@Remote async previewRemediation(request: PluginRemediationRequest): Promise<PluginRemediationPreview>',
+        description: 'Create a short-lived preview for disabling a writable entry implicated in a current conflict.',
+        parameters: [{ name: 'request', description: 'Finding and target entry identities.' }],
+        returns: 'Exact target, effect, risk, reversibility, and confirmation requirement.',
+        throws: ['when the finding does not offer the target for a reversible toggle.'],
+      },
+      {
+        signature: '@Remote async applyRemediation(previewId: PluginRemediationPreviewId, confirmed?: boolean): Promise<ChangeResult>',
+        description: 'Recheck and apply a previewed profile-safe disable operation.',
+        parameters: [{ name: 'previewId', description: 'Exact preview returned by `previewRemediation`.' }, { name: 'confirmed', description: 'Whether the user explicitly confirmed a high-risk preview; required for those previews.' }],
+        returns: 'The profile manager\'s saved and live-application outcome.',
+        throws: ['when the preview expired, became stale, or requires confirmation.'],
+      },
+      {
         signature: '@Remote listBundles(): Promise<BundleInfo[]>',
         description: 'Read installed, installation-provided, and offline Official catalog bundles, plus selected non-bundle names. A dependency without a bundle patch is listed, as a `not-bundle` problem, only while it is selected.',
         parameters: [],
@@ -5825,6 +5858,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ComputerUseProviderName = Branded<\'ComputerUseProviderName\'>;',
   },
   {
+    name: 'ConfigFieldSources',
+    declaration: 'export interface ConfigFieldSources {\n    readonly fieldPath: readonly string[];\n    readonly effective: Pick<ConfigSourceLayer, \'layer\' | \'identity\'> | null;\n    readonly shadowed: readonly Pick<ConfigSourceLayer, \'layer\' | \'identity\'>[];\n}',
+  },
+  {
+    name: 'ConfigSourceLayer',
+    declaration: 'export interface ConfigSourceLayer {\n    readonly layer: \'bundle\' | \'profile\' | \'home\' | \'invocation\';\n    readonly identity: string;\n    readonly patches: readonly PatchOptions[];\n}',
+  },
+  {
     name: 'ConfigureCall',
     declaration: 'export type ConfigureCall = (controls: Readonly<LlmCallControls>, model: Readonly<LlmResolvedModelInfo>) => LlmCallControls;',
   },
@@ -5835,6 +5876,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ConfinedSandboxMode',
     declaration: 'export type ConfinedSandboxMode = Exclude<SandboxMode, \'danger-full-access\'>;',
+  },
+  {
+    name: 'ConflictQuery',
+    declaration: 'export interface ConflictQuery {\n    readonly entryId?: PluginEntryId;\n    readonly severity?: PluginFindingSeverity;\n}',
   },
   {
     name: 'ConnectionAdmission',
@@ -7373,6 +7418,22 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PluginFiberPhase = \'pending\' | \'loading\' | \'active\' | \'failed\' | \'unloading\' | null;',
   },
   {
+    name: 'PluginFinding',
+    declaration: 'export interface PluginFinding {\n    readonly id: string;\n    readonly code: \'plugin.activation-failed\' | \'tool.duplicate-name\' | \'mcp.connection-failed\' | \'mcp.duplicate-name\' | \'bundle.compatibility-rejected\' | \'bundle.dependency-invalid\';\n    readonly severity: PluginFindingSeverity;\n    readonly affectedEntryIds: readonly PluginEntryId[];\n    readonly evidence: PluginFindingEvidence;\n    readonly remediationEntryIds: readonly PluginEntryId[];\n}',
+  },
+  {
+    name: 'PluginFindingEvidence',
+    declaration: 'export type PluginFindingEvidence = {\n    readonly kind: \'lifecycle\';\n    readonly phase: \'failed\';\n} | {\n    readonly kind: \'tool-name\';\n    readonly name: string;\n    readonly registrations: number;\n} | {\n    readonly kind: \'mcp-name\';\n    readonly serverName: string;\n    readonly registrations: number;\n} | {\n    readonly kind: \'mcp-state\';\n    readonly serverName: string;\n    readonly state: \'failed\' | \'reconnecting\';\n} | {\n    readonly kind: \'bundle\';\n    readonly packageName: string;\n    readonly reason: \'compatibility\' | \'dependency\';\n    readonly incompatible?: readonly IncompatiblePlugin[];\n};',
+  },
+  {
+    name: 'PluginFindingSeverity',
+    declaration: 'export type PluginFindingSeverity = \'error\' | \'warning\' | \'info\';',
+  },
+  {
+    name: 'PluginHealthSnapshot',
+    declaration: 'export interface PluginHealthSnapshot {\n    readonly generatedAt: number;\n    readonly pluginCount: number;\n    readonly enabledCount: number;\n    readonly failedCount: number;\n    readonly writableCount: number;\n    readonly findings: readonly PluginFinding[];\n}',
+  },
+  {
     name: 'PluginInfo',
     declaration: 'export type PluginInfo = PluginInventoryEntry & ({\n    patchId: string;\n    readOnlyReason?: never;\n} | {\n    patchId?: never;\n    readOnlyReason: ReadOnlyReason;\n});',
   },
@@ -7427,6 +7488,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PluginRegistries',
     declaration: 'export interface PluginRegistries {\n    readonly registry: Registry;\n    readonly fallbackRegistries: readonly string[];\n    readonly resolved: string | null;\n}',
+  },
+  {
+    name: 'PluginRemediationPreview',
+    declaration: 'export interface PluginRemediationPreview {\n    readonly previewId: PluginRemediationPreviewId;\n    readonly findingId: string;\n    readonly findingRevision: string;\n    readonly targetEntryId: PluginEntryId;\n    readonly expectedEnabled: true;\n    readonly risk: \'low\' | \'high\';\n    readonly reversible: true;\n    readonly requiresConfirmation: boolean;\n    readonly effect: \'disable-plugin-entry\';\n}',
+  },
+  {
+    name: 'PluginRemediationPreviewId',
+    declaration: 'export type PluginRemediationPreviewId = Branded<\'PluginRemediationPreviewId\'>;',
+  },
+  {
+    name: 'PluginRemediationRequest',
+    declaration: 'export interface PluginRemediationRequest {\n    readonly findingId: string;\n    readonly targetEntryId: PluginEntryId;\n}',
   },
   {
     name: 'PluginSpecInspection',

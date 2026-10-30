@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for 2026-10-30-plugin-management-three-layer.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/plans/2026-10-30-plugin-management-three-layer.md
+/three-layer-plugin-management-implementation-plan:
+  en: fdad0cae253f13a4
+  zh: f9c78cd75bea0d94
+/three-layer-plugin-management-implementation-plan/global-constraints:
+  en: de213fcee049fd15
+  zh: eece75cd242a32f1
+/three-layer-plugin-management-implementation-plan/review-focus:
+  en: 182fc4f9f862790a
+  zh: d492d67f1e22ac33
+/three-layer-plugin-management-implementation-plan/review-focus/task-1-record-configuration-sources-in-app-boot:
+  en: 76f1da0d2a067fc7
+  zh: 71e9e25517b88074
+/three-layer-plugin-management-implementation-plan/review-focus/task-2-add-host-diagnostics-and-typed-remediation-to-plugin-manager:
+  en: 9bb13e38f832a5bb
+  zh: 77b7f4b168cf14dd
+/three-layer-plugin-management-implementation-plan/review-focus/task-3-expose-the-diagnostic-contract-through-the-existing-remote:
+  en: 3a168b3a6eed5fb2
+  zh: 2568c14c9f245f1a
+/three-layer-plugin-management-implementation-plan/review-focus/task-4-turn-the-wj-bundle-into-the-independent-health-and-management-page:
+  en: e21129b5c2f6d164
+  zh: 4129e283c6f67170
+/three-layer-plugin-management-implementation-plan/review-focus/task-5-verify-the-complete-three-layer-flow-and-update-integration-documentation:
+  en: 58e163f4df4bdcd3
+  zh: da28d574f05bfaba
+/three-layer-plugin-management-implementation-plan/plan-self-review:
+  en: a82f27cd04f221ed
+  zh: 622fda675fe3e0f7

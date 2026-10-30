@@ -28,6 +28,8 @@ YAML 控制 HMR：base 启用仅监视配置的 `dsh-hmr`；Headless、SDK 和 A
 
 base 提供用于 Web 和 Agent 的[插件管理器](../packages/boot/plugin-manager/README.zh.md)。
 
+插件管理有三个所有者：Harness Core 负责 Profile 组合和 Loader；`pluginManager` 提供健康状态并执行受约束的修复；`dsh-plugin-manager-wj` 展示诊断。
+
 要查看你的机器启动的配置树：
 
 ```sh

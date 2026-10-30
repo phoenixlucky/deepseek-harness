@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/client/ui-settings-mcp/README.md
+/:
+  en: 7ef428db8882dd79
+  zh: 91c5ba0baa3496ce
+/deepseek-ai-dsh-client-ui-settings-mcp:
+  en: 6ba6f9819727d227
+  zh: 8e2801429e74acc3
+/deepseek-ai-dsh-client-ui-settings-mcp/summary:
+  en: 4b76b99918bfac78
+  zh: af4d20a576565d9d
+/deepseek-ai-dsh-client-ui-settings-mcp/table-of-contents:
+  en: 054c6d2af439db12
+  zh: 7add93bb35c0b217
+/deepseek-ai-dsh-client-ui-settings-mcp/use-this-package:
+  en: fc29b453bbdd1b2d
+  zh: 0d4c8e2ca5ea3dfb
+/deepseek-ai-dsh-client-ui-settings-mcp/understand-the-implementation:
+  en: 8f49d4355612e8f4
+  zh: 5ccc80235fd1be70
+/deepseek-ai-dsh-client-ui-settings-mcp/further-exploration:
+  en: e2e73349636ce659
+  zh: 3f502004690eb4fb
+/deepseek-ai-dsh-client-ui-settings-mcp/dev-note:
+  en: 28601bdc8c63182b
+  zh: 04ef186d13c4c8c5
+/deepseek-ai-dsh-client-ui-settings-mcp/model-experience:
+  en: 24c752e8259de545
+  zh: 8fe2901013a5a40f
+/deepseek-ai-dsh-client-ui-settings-mcp/model-experience/kv-cache-effect:
+  en: 4ef4ba3be439deee
+  zh: ae33930bec585b40
+/deepseek-ai-dsh-client-ui-settings-mcp/known-limitations-and-deferred-work:
+  en: bd0d1dce3b3c93bb
+  zh: fc6cf5a43356253d

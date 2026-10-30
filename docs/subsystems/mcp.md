@@ -58,6 +58,7 @@ interface McpClientSnapshot {
 ```
 
 ```ts type-equiv
+/** Connection lifecycle state exposed by the MCP client registry. */
 type McpClientState = 'starting' | 'connected' | 'reconnecting' | 'failed' | 'stopped'
 ```
 

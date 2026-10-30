@@ -183,6 +183,8 @@ export class ThemeRuntime {
   private readonly host: ConfigForm<ThemeSettings>
   private themes: ThemeDefinition[] = [...BUILTIN_THEMES]
   private preference: ThemePreference
+  /** Last built-in preference read from settings, separate from a local extension theme id. */
+  private durablePreference: ThemePreference = DEFAULT_PREFERENCE
   private fontSizes: FontSizes = bootstrapFontSizes()
   private fontFamilies: FontFamilies = bootstrapFontFamilies()
   private revision = 0
@@ -331,11 +333,14 @@ export class ThemeRuntime {
     if (this.pendingWrites > 0) return
     const section = this.host.getSnapshot().value
     if (section === undefined) return
+    const preferenceChanged = section.preference !== this.durablePreference
     const fontFamilies = durableFontFamilies(section)
     const fontSizes = sectionFontSizes(section)
-    if (this.preference === section.preference
+    if (!preferenceChanged
+      && (this.preference === section.preference || !isThemePreference(this.preference))
       && FONT_ROLES.every(role => this.fontSizes[role] === fontSizes[role] && this.fontFamilies[role] === fontFamilies[role])) return
-    this.preference = section.preference
+    if (preferenceChanged || isThemePreference(this.preference)) this.preference = section.preference
+    this.durablePreference = section.preference
     this.fontSizes = fontSizes
     this.fontFamilies = fontFamilies
     this.publish()

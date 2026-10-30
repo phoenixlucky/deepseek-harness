@@ -141,10 +141,15 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'pluginManager/cancelInstall': 'owner-only', // owner plugin management
   'pluginManager/inspect': 'owner-only', // owner plugin management
   'pluginManager/installBundle': 'owner-only', // owner plugin management
+  'pluginManager/applyRemediation': 'owner-only', // owner plugin management
+  'pluginManager/getConfigSources': 'owner-only', // owner plugin management
+  'pluginManager/getConflicts': 'owner-only', // owner plugin management
+  'pluginManager/getHealthSnapshot': 'owner-only', // owner plugin management
   'pluginManager/listBundles': 'owner-only', // owner plugin management
   'pluginManager/listPlugins': 'owner-only', // owner plugin management
   'pluginManager/listVersionExemptions': 'owner-only', // owner plugin management
   'pluginManager/listVersions': 'owner-only', // owner plugin management
+  'pluginManager/previewRemediation': 'owner-only', // owner plugin management
   'pluginManager/readBundleDetail': 'owner-only', // owner plugin management
   'pluginManager/registries': 'owner-only', // owner plugin management
   'pluginManager/removeBundle': 'owner-only', // owner plugin management

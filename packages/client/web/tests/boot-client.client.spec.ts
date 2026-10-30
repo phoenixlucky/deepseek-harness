@@ -77,6 +77,19 @@ describe('bootClient', () => {
     await ctx.fiber.dispose()
   })
 
+  it('includes the activation error for a failed plugin in the boot report', async () => {
+    const graph = graphOf(['broken'])
+    const { modules } = modulesOf(graph, {
+      broken: { apply: () => { throw new Error('layout presenter failed') } },
+    })
+    const ctx = new Context()
+    onTestFinished(() => ctx.fiber.dispose())
+
+    await expect(bootClient({ ctx, modules, manifest: modules.manifest })).rejects.toThrow(
+      /broken: failed: Error: layout presenter failed/,
+    )
+  })
+
   it('reports and logs an import failure for a row that is neither seeded nor a graph row', async () => {
     const { modules } = modulesOf(graphOf(['seeded']), { seeded: { apply: () => {} } })
     const manifest = parseBootManifest(graphOf(['ghost']))
@@ -100,14 +113,15 @@ describe('assertEntriesActive', () => {
 
   /** Loader-shaped double: entries with scripted fiber states, services by name. */
   function auditCtx(entries: readonly FakeEntry[], services: Record<string, unknown> = {}): Context {
-    return {
+    return Object.assign(new Context(), {
+      logger: { buffer: [] },
       loader: {
         * entries() {
           for (const entry of entries) yield { options: { name: entry.name }, fiber: entry.fiber }
         },
       },
       get: (name: string) => services[name],
-    } as unknown as Context
+    })
   }
 
   const silent = { importError: () => undefined }

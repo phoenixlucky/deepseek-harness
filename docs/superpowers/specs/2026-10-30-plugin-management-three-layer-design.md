@@ -4,7 +4,7 @@ English | [中文](2026-10-30-plugin-management-three-layer-design.zh.md)
 
 ## Summary
 
-This design extends the read-only WJ registration bundle into a plugin health and management surface across Harness Core, Management API, and Management Plugin. It reuses the Host's Loader, profile resolver, lifecycle, dependency, configuration-form, and plugin-management capabilities, adding provenance, conflict diagnosis, and risk-bounded remediation.
+This design extends the read-only WJ registration bundle into a plugin health and management surface across Harness Core, Management API, and Management Plugin. It reuses the Host's Loader, profile resolver, lifecycle, dependency, configuration-form, and plugin-management capabilities, adding field-source details, conflict diagnosis, and risk-bounded remediation.
 
 ## Table of Contents
 
@@ -30,14 +30,14 @@ Harness already owns plugin registration, profile composition, package resolutio
 
 Cordis Loader owns runtime plugin entries and lifecycle. `app-boot` resolves and composes profile layers and performs compatibility preflight. `plugin-manager` reads and changes plugin and bundle enablement, reports protected targets and operation outcomes, and installs or removes bundles. `settings` exposes schema-derived configuration forms with revision-checked writes. The official Web Plugins panel already manages bundles and their rows.
 
-The new work extends these owners and keeps `dsh-plugin-manager-wj` as the independent Management Plugin. The bundle focuses on status, diagnostics, configuration provenance, schema forms, and safe remediation; it does not duplicate bundle installation or package removal.
+The new work extends these owners and keeps `dsh-plugin-manager-wj` as the independent Management Plugin. The bundle focuses on status, diagnostics, configuration sources, schema forms, and safe remediation; it does not duplicate bundle installation or package removal.
 
 <a id="architecture"></a>
 ## Architecture
 
 ### Layer 1: Harness Core
 
-Cordis Loader remains the registry and lifecycle authority. `app-boot` records configuration provenance while it resolves bundle, profile, home, and invocation layers. Provenance identifies the source layer, entry, and field path, including shadowed definitions, while the effective configuration remains the value consumed by the Loader.
+Cordis Loader remains the registry and lifecycle authority. `app-boot` records configuration source layers while it resolves bundle, profile, home, and invocation layers. The query identifies the source layer, entry, and field path, including shadowed definitions, while the effective configuration remains the value consumed by the Loader.
 
 The Host-side diagnostic provider derives health findings from authoritative state already owned by Loader, profile resolution, compatibility preflight, plugin management, and available tool/MCP registries. It reports evidence-backed activation failures, compatibility or dependency problems, registration conflicts, and configuration overrides. It does not infer a conflict from a name or report missing evidence as healthy.
 
@@ -45,7 +45,7 @@ Findings use stable codes, severity, affected plugin identities, evidence refere
 
 ### Layer 2: Management API
 
-The existing `pluginManager` Remote remains the canonical management namespace. It exposes a health snapshot, conflict query, configuration provenance query, remediation preview, and remediation execution alongside its existing list and enablement operations. Diagnostic rules remain in a Host-side provider; the Remote delegates to that provider and to existing write owners.
+The existing `pluginManager` Remote remains the canonical management namespace. It exposes a health snapshot, conflict query, configuration-source query, remediation preview, and remediation execution alongside its existing list and enablement operations. Diagnostic rules remain in a Host-side provider; the Remote delegates to that provider and to existing write owners.
 
 Remediation requests name a finding and a typed operation. The Host returns a preview with its target, expected state, risk class, reversibility, and effect summary. Execution re-reads the finding and target, checks the preview revision, and calls the existing profile-safe operation. It rejects stale, protected, ambiguous, or unsupported targets. It never accepts arbitrary file paths, YAML fragments, or plugin code from the Client.
 
@@ -58,9 +58,9 @@ The page supports plugin enablement controls when the Host marks a row writable,
 <a id="management-api"></a>
 ## Management API
 
-Status and enablement continue to use `listPlugins()` and `setPluginEnabled()`. The health snapshot includes current plugin and bundle status and typed findings. Conflict queries return current evidence and process-local events without storing a second durable log. Provenance queries return effective and shadowed sources for schema-known configuration fields.
+Status and enablement continue to use `listPlugins()` and `setPluginEnabled()`. The health snapshot includes current plugin and bundle status and typed findings. Conflict queries return current evidence and process-local events without storing a second durable log. Configuration-source queries return effective and shadowed layers for schema-known fields.
 
-Provenance identifies layer, stable entry identity, and field path. It does not return absolute Host paths, raw configuration documents, or secret values. Schema forms remain the only configuration write path; they preserve existing validation, revision conflict handling, and user-layer semantics.
+Configuration-source results identify the layer, stable entry identity, and field path. They omit absolute Host paths, raw configuration documents, and secret values. Schema forms remain the only configuration write path; they preserve existing validation, revision conflict handling, and user-layer semantics.
 
 Remediation previews are immutable, short-lived descriptions of a specific action against a finding revision. A low-risk action may execute without a confirmation step only when a Host rule classifies it as deterministic, reversible, profile-owned, and safe for the exact target. High-risk and unclassified actions require an explicit confirmation after preview. The Host rechecks eligibility at execution time, so a confirmation cannot authorize a different action or target.
 
@@ -92,7 +92,7 @@ Configuration revision conflicts preserve the user's draft. A failed or partiall
 <a id="validation"></a>
 ## Validation
 
-Core coverage verifies provenance across precedence layers, redaction, conflict evidence, protected targets, risk classification, stale-preview rejection, and operation outcomes. API coverage verifies the Remote contract and current-state refresh after a mutation. The standalone bundle covers health, loading, unsupported Host, search, schema-form edits, conflict details, repair confirmation, and failure recovery.
+Core coverage verifies source layers across precedence, redaction, conflict evidence, protected targets, risk classification, stale-preview rejection, and operation outcomes. API coverage verifies the Remote contract and current-state refresh after a mutation. The standalone bundle covers health, loading, unsupported Host, search, schema-form edits, conflict details, repair confirmation, and failure recovery.
 
 The combined Web profile must demonstrate a complete flow from a real Loader state through the Host API to the independent bundle, including one writable repair and one refused protected target. Existing plugin registration, configuration precedence, lifecycle, and bundle-management behavior remain covered by their owning packages.
 

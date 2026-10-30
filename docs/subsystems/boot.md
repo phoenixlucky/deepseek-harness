@@ -236,6 +236,40 @@ Manage profile files and apply their declared reload lifecycle.
  */
 @Remote async listPlugins(): Promise<PluginInfo[]>
 
+/** Describe which profile patch layers define schema fields for one Loader entry.
+ * @param id Loader entry identity returned by `listPlugins`.
+ * @param fields Schema field paths requested by the Client.
+ * @returns Effective and shadowed source identities without configuration values or file paths.
+ * @throws `plugin-manager/unknown-plugin` when the entry is no longer present.
+ */
+@Remote async getConfigSources(id: PluginEntryId, fields: readonly (readonly string[])[]): Promise<ConfigFieldSources[]>
+
+/** Read a current summary and evidence-backed findings from Host-owned runtime state.
+ * @returns Plugin status counts and current findings; nothing is written to a durable history.
+ */
+@Remote async getHealthSnapshot(): Promise<PluginHealthSnapshot>
+
+/** Query current findings without retaining a separate history.
+ * @param query Optional entry and severity filters.
+ * @returns Current findings that match the filter.
+ */
+@Remote async getConflicts(query?: ConflictQuery): Promise<PluginFinding[]>
+
+/** Create a short-lived preview for disabling a writable entry implicated in a current conflict.
+ * @param request Finding and target entry identities.
+ * @returns Exact target, effect, risk, reversibility, and confirmation requirement.
+ * @throws when the finding does not offer the target for a reversible toggle.
+ */
+@Remote async previewRemediation(request: PluginRemediationRequest): Promise<PluginRemediationPreview>
+
+/** Recheck and apply a previewed profile-safe disable operation.
+ * @param previewId Exact preview returned by `previewRemediation`.
+ * @param confirmed Whether the user explicitly confirmed a high-risk preview; required for those previews.
+ * @returns The profile manager's saved and live-application outcome.
+ * @throws when the preview expired, became stale, or requires confirmation.
+ */
+@Remote async applyRemediation(previewId: PluginRemediationPreviewId, confirmed?: boolean): Promise<ChangeResult>
+
 /** Read installed, installation-provided, and offline Official catalog bundles, plus selected non-bundle names.
  * A dependency without a bundle patch is listed, as a `not-bundle` problem, only while it is selected.
  * @returns Package versions, manifest descriptions, the installable spec of profile dependencies, rows, optional

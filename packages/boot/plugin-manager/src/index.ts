@@ -9,6 +9,7 @@ import { Context } from '@deepseek-ai/cordis'
 import type { EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import z from '@deepseek-ai/schemastery'
+import { redactSecrets } from '@deepseek-ai/dsh-settings'
 import semver from 'semver'
 import { TypertRemoteService, Remote, RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import { detailImageResponse, NPM_FILE_SOURCES } from '@deepseek-ai/dsh-plugin-detail'
@@ -19,7 +20,7 @@ import { readBundleDocument, readBundleImage, type BundleDetailOptions } from '.
 import { pluginEntryId, readPluginInventory } from '@deepseek-ai/dsh-host-plugin-inventory'
 import {
   readPluginMeta, readProfileManifest, resolveBundleDir, loadOverlayPatches, composeEntries,
-  readProfilePatches, bundlePatchPaths,
+  readProfilePatches, readConfigSourceLayers, describeConfigSources, bundlePatchPaths,
   evaluatePluginCompatibility, readProfileCompatibility, readProfileVersionExemptions,
   setProfileVersionExemption, validatePluginVersionExemption, PROFILE_COMPATIBILITY_FILENAME,
   getDshRuntimeVersion, ResolutionRestartRequired,
@@ -28,6 +29,7 @@ import {
 import { OPTIONAL_BUNDLES, OFFICIAL_ON_DEMAND_CATALOG, PROTECTED_PLUGINS } from '@deepseek-ai/dsh-official-bundles'
 import type {} from '@deepseek-ai/dsh-hmr'
 import type { ProfileContext, ProfileManifest } from '@deepseek-ai/dsh-app-boot'
+import type { ConfigFieldSources } from '@deepseek-ai/dsh-app-boot/types'
 import { bundleManifest, readProfileRegistry, registryArguments, runProfilePnpm, saveManifest, viewProfilePackage } from './operations.ts'
 import { classifyInstallFailure } from './install-failure.ts'
 import { officialBundleInstallTarget } from './official-install-target.ts'
@@ -39,9 +41,12 @@ import { approveBuilds, recordPendingBuilds } from './build-approval.ts'
 import { checkGithubConnection } from './github-connection.ts'
 import { chooseGitTransport, sshGitSpec } from './git-transport.ts'
 import { newerVersions, VERSION_FIELDS, VERSION_LIST_FIELDS, versionFacts } from './versions.ts'
+import { buildPluginFindings } from './health.ts'
 import type {
-  BundleDetail, BundleInfo, BundleRowInfo, ChangeResult, InspectOptions, InstallBundleOptions, ListVersionsOptions, ManagementError,
-  PackageResult, PluginChange, PluginEntryId, PluginInfo, PluginInstallCancellation, PluginInstallProgress, PluginInstallRequestId,
+  BundleDetail, BundleInfo, BundleRowInfo, ChangeResult, InspectOptions, InstallBundleOptions,
+  ListVersionsOptions, ManagementError, PackageResult, PluginChange, PluginEntryId, ConflictQuery,
+  PluginFinding, PluginHealthSnapshot, PluginInfo, PluginInstallCancellation, PluginInstallProgress,
+  PluginInstallRequestId, PluginRemediationPreview, PluginRemediationPreviewId, PluginRemediationRequest,
   PluginRegistries, PluginSpecInspection, PluginUpdateResult, PluginUpdateStep, PluginVersion, PluginVersionList, Registry,
   RegistryAttempt, UpdateBundleOptions,
   PluginOperation, PluginOperationId,
@@ -49,6 +54,32 @@ import type {
 export type * from './types.ts'
 export { classifyInstallFailure, type InstallFailureFacts } from './install-failure.ts'
 export { InvalidInstallSpecError, parseInstallSpec, type ParsedInstallSpec } from './install-spec.ts'
+
+const REMEDIATION_PREVIEW_MS = 120_000
+const MAX_REMEDIATION_PREVIEWS = 64
+
+interface SchemaShape {
+  type?: string
+  dict?: Record<string, SchemaShape>
+  list?: SchemaShape[]
+  inner?: SchemaShape
+}
+
+function schemaHasPath(node: SchemaShape | undefined, path: readonly string[], offset = 0): boolean {
+  if (node === undefined) return false
+  if (offset === path.length) return true
+  if (node.type === 'object') {
+    const key = path[offset]
+    return key === undefined ? false : schemaHasPath(node.dict?.[key], path, offset + 1)
+  }
+  if (node.type === 'union' || node.type === 'intersect') return node.list?.some(child => schemaHasPath(child, path, offset)) ?? false
+  if (node.type === 'transform') return schemaHasPath(node.inner, path, offset)
+  return false
+}
+
+function isPathPrefix(prefix: readonly string[], path: readonly string[]): boolean {
+  return prefix.length <= path.length && prefix.every((part, index) => part === path[index])
+}
 
 /** The pnpm executable, registries, and limits for diagnostics, lookups and connection checks. */
 export interface Config {
@@ -310,7 +341,7 @@ declare module '@deepseek-ai/cordis' {
 
 /** Manage profile files and apply their declared reload lifecycle. */
 export class PluginManager extends TypertRemoteService {
-  static inject = ['loader', 'profileContext']
+  static inject = ['loader', 'profileContext', 'tools']
   static Config: z<Config> = z.object({
     pnpmCommand: z.string().default('pnpm'),
     outputBytes: z.number().step(1).min(1).default(16384),
@@ -352,6 +383,8 @@ export class PluginManager extends TypertRemoteService {
   private readonly abort = new AbortController()
   /** Installations by request id, from their call until it settles. */
   private readonly installs = new Map<PluginInstallRequestId, InstallControl>()
+  /** Short-lived previews bind one exact finding revision to one profile toggle. */
+  private readonly remediationPreviews = new Map<PluginRemediationPreviewId, { preview: PluginRemediationPreview; expiresAt: number }>()
   private readonly detail: BundleDetailOptions
 
   constructor(ctx: Context, config: Config) {
@@ -478,6 +511,132 @@ export class PluginManager extends TypertRemoteService {
       }
       return { ...entry, patchId: candidate.id }
     })
+  }
+
+  /** Describe which profile patch layers define schema fields for one Loader entry.
+   * @param id Loader entry identity returned by `listPlugins`.
+   * @param fields Schema field paths requested by the Client.
+   * @returns Effective and shadowed source identities without configuration values or file paths.
+   * @throws `plugin-manager/unknown-plugin` when the entry is no longer present.
+   */
+  @Remote
+  async getConfigSources(id: PluginEntryId, fields: readonly (readonly string[])[]): Promise<ConfigFieldSources[]> {
+    const managed = (await this.listPlugins()).find(row => row.entryId === id)
+    if (managed === undefined) throw new RemoteError('plugin-manager/unknown-plugin', `No such plugin entry: ${id}`, { id })
+    const entry = this.ctx.loader.resolve(id)
+    const layers = readConfigSourceLayers('dsh', this.profile)
+    const schema = entry.fiber?.runtime?.Config
+    const schemaShape = schema === undefined ? undefined : schema as SchemaShape
+    const secretPaths = schema === undefined || !('toJSON' in schema)
+      ? new Set<string>()
+      : new Set(redactSecrets(schema as z<never>, undefined).secrets.map(secret => JSON.stringify(secret.path)))
+    const secretPathList = [...secretPaths].map(path => JSON.parse(path) as string[])
+    return fields.map(fieldPath => !schemaHasPath(schemaShape, fieldPath)
+      || secretPathList.some(secretPath => isPathPrefix(fieldPath, secretPath) || isPathPrefix(secretPath, fieldPath))
+      ? { fieldPath: [...fieldPath], effective: null, shadowed: [] }
+      : describeConfigSources(layers, entry.options.id, fieldPath))
+  }
+
+  /** Read a current summary and evidence-backed findings from Host-owned runtime state.
+   * @returns Plugin status counts and current findings; nothing is written to a durable history.
+   */
+  @Remote
+  async getHealthSnapshot(): Promise<PluginHealthSnapshot> {
+    const [plugins, inventory, bundles] = await Promise.all([this.listPlugins(), readPluginInventory(this.ctx), this.listBundles()])
+    const findings = buildPluginFindings(plugins, inventory, bundles)
+    return {
+      generatedAt: Date.now(),
+      pluginCount: plugins.length,
+      enabledCount: plugins.filter(row => row.enabled).length,
+      failedCount: plugins.filter(row => row.fiberPhase === 'failed').length,
+      writableCount: plugins.filter(row => row.readOnlyReason === undefined).length,
+      findings,
+    }
+  }
+
+  /** Query current findings without retaining a separate history.
+   * @param query Optional entry and severity filters.
+   * @returns Current findings that match the filter.
+   */
+  @Remote
+  async getConflicts(query?: ConflictQuery): Promise<PluginFinding[]> {
+    const findings = (await this.getHealthSnapshot()).findings
+    return findings.filter(finding => (query?.entryId === undefined || finding.affectedEntryIds.includes(query.entryId))
+      && (query?.severity === undefined || finding.severity === query.severity))
+  }
+
+  /** Create a short-lived preview for disabling a writable entry implicated in a current conflict.
+   * @param request Finding and target entry identities.
+   * @returns Exact target, effect, risk, reversibility, and confirmation requirement.
+   * @throws when the finding does not offer the target for a reversible toggle.
+   */
+  @Remote
+  async previewRemediation(request: PluginRemediationRequest): Promise<PluginRemediationPreview> {
+    const finding = (await this.getConflicts()).find(item => item.id === request.findingId)
+    const plugin = (await this.listPlugins()).find(item => item.entryId === request.targetEntryId)
+    if (finding === undefined || !finding.remediationEntryIds.includes(request.targetEntryId)
+      || plugin === undefined || !plugin.enabled || plugin.readOnlyReason !== undefined) {
+      throw new RemoteError('plugin-manager/unsupported-remediation', 'The requested plugin toggle is not eligible', {
+        findingId: request.findingId,
+      })
+    }
+    const previewId = randomUUID() as PluginRemediationPreviewId
+    const risk = finding.remediationEntryIds.length === 1 && this.ownerContext.get('hmr') !== undefined ? 'low' : 'high'
+    const preview: PluginRemediationPreview = {
+      previewId,
+      findingId: finding.id,
+      findingRevision: JSON.stringify(finding),
+      targetEntryId: plugin.entryId,
+      expectedEnabled: true,
+      risk,
+      reversible: true,
+      requiresConfirmation: risk === 'high',
+      effect: 'disable-plugin-entry',
+    }
+    this.pruneRemediationPreviews()
+    this.remediationPreviews.set(previewId, { preview, expiresAt: Date.now() + REMEDIATION_PREVIEW_MS })
+    while (this.remediationPreviews.size > MAX_REMEDIATION_PREVIEWS) {
+      const oldest = this.remediationPreviews.keys().next().value as PluginRemediationPreviewId | undefined
+      if (oldest === undefined) break
+      this.remediationPreviews.delete(oldest)
+    }
+    return preview
+  }
+
+  /** Recheck and apply a previewed profile-safe disable operation.
+   * @param previewId Exact preview returned by `previewRemediation`.
+   * @param confirmed Whether the user explicitly confirmed a high-risk preview; required for those previews.
+   * @returns The profile manager's saved and live-application outcome.
+   * @throws when the preview expired, became stale, or requires confirmation.
+   */
+  @Remote
+  async applyRemediation(previewId: PluginRemediationPreviewId, confirmed?: boolean): Promise<ChangeResult> {
+    const stored = this.remediationPreviews.get(previewId)
+    if (stored === undefined || stored.expiresAt <= Date.now()) {
+      this.remediationPreviews.delete(previewId)
+      throw new RemoteError('plugin-manager/stale-remediation-preview', 'The repair preview expired', { previewId })
+    }
+    const { preview } = stored
+    if (preview.requiresConfirmation && confirmed !== true) {
+      throw new RemoteError('plugin-manager/remediation-confirmation-required', 'This repair requires confirmation', { previewId })
+    }
+    const finding = (await this.getConflicts()).find(item => item.id === preview.findingId)
+    const plugin = (await this.listPlugins()).find(item => item.entryId === preview.targetEntryId)
+    if (finding === undefined || JSON.stringify(finding) !== preview.findingRevision
+      || !finding.remediationEntryIds.includes(preview.targetEntryId)
+      || plugin === undefined || !plugin.enabled || plugin.readOnlyReason !== undefined) {
+      this.remediationPreviews.delete(previewId)
+      throw new RemoteError('plugin-manager/stale-remediation-preview', 'The repair target or finding changed', { previewId })
+    }
+    this.remediationPreviews.delete(previewId)
+    return this.setPluginEnabled(preview.targetEntryId, false)
+  }
+
+  private pruneRemediationPreviews(): void {
+    const now = Date.now()
+    for (const [id, value] of this.remediationPreviews) {
+      if (value.expiresAt <= now) this.remediationPreviews.delete(id)
+    }
   }
 
   /** Read installed, installation-provided, and offline Official catalog bundles, plus selected non-bundle names.

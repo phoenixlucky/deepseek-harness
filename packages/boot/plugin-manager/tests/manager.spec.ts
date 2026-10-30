@@ -9,6 +9,7 @@ import { homedir, tmpdir } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { execa } from 'execa'
 import type { Context } from '@deepseek-ai/cordis'
+import type { ToolRegistrationInventoryRow } from '@deepseek-ai/dsh-host-plugin-inventory/types'
 import { afterAll, beforeAll, expect, it, onTestFinished, vi } from 'vitest'
 import {
   boot, composeEntries, initProfile, loadProfileDirectory, readProfilePatches, readProfileManifest,
@@ -22,6 +23,7 @@ import Hmr from '@deepseek-ai/dsh-hmr'
 import Timer from '@deepseek-ai/cordis-plugin-timer'
 import type { PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import { Group } from '@deepseek-ai/cordis-plugin-loader'
+import z from '@deepseek-ai/schemastery'
 import * as operations from '../src/operations.ts'
 import * as githubConnection from '../src/github-connection.ts'
 import * as gitTransport from '../src/git-transport.ts'
@@ -35,6 +37,7 @@ afterAll(() => { restoreGitCommandLineConfig() })
 
 async function fixture(reload: 'live' | 'startup' = 'live', overlay = false, prepare?: (ctx: Context) => void, config: Config = {}, packageManager?: ProfileContext['packageManager'], prepareFiles?: (dir: string) => void, sourceInstallation = false) {
   const temporaryHome = mkdtempSync(join(tmpdir(), 'plugin-manager-'))
+  const toolRegistrations: ToolRegistrationInventoryRow[] = []
   let owner: Context | undefined
   onTestFinished(async () => { await owner?.fiber.dispose(); rmSync(temporaryHome, { recursive: true, force: true }) })
   // pnpm resolves workspace roots through native realpath, including Windows 8.3 aliases.
@@ -74,6 +77,7 @@ async function fixture(reload: 'live' | 'startup' = 'live', overlay = false, pre
   const ctx = await boot('test', join(dir, 'cordis.yml'), readProfilePatches('test', profile), (ctx) => {
     owner = ctx
     ctx.provide('appReady', { onReady: (listener: () => void) => { listener(); return () => {} } })
+    ctx.provide('tools', { registrations: () => toolRegistrations } as never)
     prepare?.(ctx)
     ctx.provide('profileContext', profile)
     ctx.loader.builtins.manager = PluginManager
@@ -89,7 +93,7 @@ async function fixture(reload: 'live' | 'startup' = 'live', overlay = false, pre
     stopHmr = () => owner.dispose()
     await ctx.hmr.runExclusive(async () => {})
   }
-  return { ctx, dir, manager: ctx.pluginManager, bundle, profile, stopHmr, overlays, connection }
+  return { ctx, dir, manager: ctx.pluginManager, bundle, profile, stopHmr, overlays, connection, toolRegistrations }
 }
 
 it.each(['live', 'startup'] as const)('refuses an unsupported bundle before saving or applying it with %s reload', async (reload) => {
@@ -671,6 +675,98 @@ it('turns a plugin off and on without leaving a patch override the bundle alread
   expect(await manager.setPluginEnabled(id, true)).toMatchObject({ changed: true, application: 'applied' })
   expect((await manager.listPlugins()).find(row => row.entryId === id)?.enabled).toBe(true)
   expect(readFileSync(join(dir, 'cordis.patch.yml'), 'utf8')).not.toContain('id: managed')
+})
+
+it('reports path-free configuration source metadata without returning values', async () => {
+  const { manager, ctx, dir } = await fixture()
+  const row = (await manager.listPlugins()).find(item => item.patchId === 'managed')!
+  writeFileSync(join(dir, 'cordis.patch.yml'), '- id: managed\n  config:\n    credential: token-secret\n')
+  Object.defineProperty(ctx.loader.resolve(row.entryId).fiber!.runtime, 'Config', {
+    configurable: true,
+    value: z.object({ credential: z.string() }),
+  })
+  await expect(manager.getConfigSources(row.entryId, [['credential']])).resolves.toEqual([{
+    fieldPath: ['credential'],
+    effective: { layer: 'profile', identity: 'test' },
+    shadowed: [],
+  }])
+  const result = await manager.getConfigSources(row.entryId, [['credential']])
+  expect(JSON.stringify(result)).not.toContain('token-secret')
+  expect(JSON.stringify(result)).not.toContain(dir)
+})
+
+it('omits source details for schema-declared secret fields even when a caller requests them', async () => {
+  const { manager, ctx, dir } = await fixture()
+  const row = (await manager.listPlugins()).find(item => item.patchId === 'managed')!
+  writeFileSync(join(dir, 'cordis.patch.yml'), '- id: managed\n  config:\n    apiKey: never-return-this\n    label: visible\n')
+  const entry = ctx.loader.resolve(row.entryId)
+  Object.defineProperty(entry.fiber!.runtime, 'Config', {
+    configurable: true,
+    value: z.object({ apiKey: z.string().role('secret'), label: z.string() }),
+  })
+  const result = await manager.getConfigSources(row.entryId, [['apiKey'], ['label'], ['unknown']])
+  expect(result).toEqual([
+    { fieldPath: ['apiKey'], effective: null, shadowed: [] },
+    { fieldPath: ['label'], effective: { layer: 'profile', identity: 'test' }, shadowed: [] },
+    { fieldPath: ['unknown'], effective: null, shadowed: [] },
+  ])
+  expect(JSON.stringify(result)).not.toContain('never-return-this')
+})
+
+it('summarizes a duplicate registration and applies its deterministic optional-plugin repair', async () => {
+  const { manager, toolRegistrations } = await fixture()
+  const rows = await manager.listPlugins()
+  const writable = rows.find(row => row.patchId === 'managed')!
+  const protectedRow = rows.find(row => row.readOnlyReason !== undefined)!
+  toolRegistrations.push(
+    { name: 'duplicate-tool', scope: 'global', conditional: false, owner: { entryId: writable.entryId, moduleName: writable.moduleName } },
+    { name: 'duplicate-tool', scope: 'global', conditional: false, owner: { entryId: protectedRow.entryId, moduleName: protectedRow.moduleName } },
+  )
+
+  const snapshot = await manager.getHealthSnapshot()
+  expect(snapshot.findings).toContainEqual(expect.objectContaining({
+    code: 'tool.duplicate-name', affectedEntryIds: [writable.entryId, protectedRow.entryId],
+  }))
+  const finding = snapshot.findings.find(item => item.code === 'tool.duplicate-name')!
+  const preview = await manager.previewRemediation({ findingId: finding.id, targetEntryId: writable.entryId })
+  expect(preview).toMatchObject({ risk: 'low', requiresConfirmation: false, expectedEnabled: true })
+  expect(await manager.applyRemediation(preview.previewId)).toMatchObject({ changed: true, application: 'applied' })
+  expect((await manager.listPlugins()).find(row => row.entryId === writable.entryId)?.enabled).toBe(false)
+})
+
+it('requires confirmation when a duplicate registration has multiple writable repair targets', async () => {
+  const { manager, bundle, toolRegistrations } = await fixture()
+  bundle('third', [{ id: 'third-plugin', name: './plugin.mjs' }])
+  await manager.setBundleEnabled('third', true)
+  const rows = await manager.listPlugins()
+  const targets = rows.filter(row => row.readOnlyReason === undefined)
+  const [first, second] = targets
+  expect(first).toBeDefined()
+  expect(second).toBeDefined()
+  toolRegistrations.push(
+    { name: 'duplicate-tool', scope: 'global', conditional: false, owner: { entryId: first!.entryId, moduleName: first!.moduleName } },
+    { name: 'duplicate-tool', scope: 'global', conditional: false, owner: { entryId: second!.entryId, moduleName: second!.moduleName } },
+  )
+  const finding = (await manager.getConflicts()).find(item => item.code === 'tool.duplicate-name')!
+  const preview = await manager.previewRemediation({ findingId: finding.id, targetEntryId: first!.entryId })
+  expect(preview).toMatchObject({ risk: 'high', requiresConfirmation: true })
+  await expect(manager.applyRemediation(preview.previewId)).rejects.toMatchObject({ code: 'plugin-manager/remediation-confirmation-required' })
+  expect(await manager.applyRemediation(preview.previewId, true)).toMatchObject({ changed: true })
+})
+
+it('refuses a remediation preview after its finding changes', async () => {
+  const { manager, toolRegistrations } = await fixture()
+  const rows = await manager.listPlugins()
+  const target = rows.find(row => row.patchId === 'managed')!
+  const protectedRow = rows.find(row => row.readOnlyReason !== undefined)!
+  toolRegistrations.push(
+    { name: 'duplicate-tool', scope: 'global', conditional: false, owner: { entryId: target.entryId, moduleName: target.moduleName } },
+    { name: 'duplicate-tool', scope: 'global', conditional: false, owner: { entryId: protectedRow.entryId, moduleName: protectedRow.moduleName } },
+  )
+  const finding = (await manager.getConflicts()).find(item => item.code === 'tool.duplicate-name')!
+  const preview = await manager.previewRemediation({ findingId: finding.id, targetEntryId: target.entryId })
+  toolRegistrations.splice(0, toolRegistrations.length)
+  await expect(manager.applyRemediation(preview.previewId)).rejects.toMatchObject({ code: 'plugin-manager/stale-remediation-preview' })
 })
 
 it('retains installed dependencies when toggling a bundle and appends it when re-enabled', async () => {
