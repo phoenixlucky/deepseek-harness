@@ -43,7 +43,7 @@ await scope.dispose()   // unwinds every registration made through scope.ctx
 
 ### Build a scoped registry layer
 
-Registry authors use `ScopedLayers`, `NamedEntries`, and `AnonymousEntries` to hold one eager global layer plus lazily created exact-scope layers: reads never create layers, `merge()` materializes insertion-ordered named shadows along the scope chain, and `effect()` derives visibility and ownership from the same context. A scoped layer is reclaimed only when its whole aggregate is empty.
+Registry authors use `ScopedLayers`, `NamedEntries`, and `AnonymousEntries` to hold one eager global layer plus lazily created exact-scope layers: reads never create layers, `merge()` materializes insertion-ordered named shadows along the scope chain, `layers()` snapshots existing layers without their opaque keys, and `effect()` derives visibility and ownership from the same context. A scoped layer is reclaimed only when its whole aggregate is empty.
 
 -----
 

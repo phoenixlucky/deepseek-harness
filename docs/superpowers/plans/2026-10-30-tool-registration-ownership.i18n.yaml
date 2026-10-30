@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for 2026-10-30-tool-registration-ownership.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/plans/2026-10-30-tool-registration-ownership.md
+/tool-registration-ownership-and-management-plugin-implementation-plan:
+  en: 03468c77b7b36284
+  zh: a5c881fda5e20082
+/tool-registration-ownership-and-management-plugin-implementation-plan/global-constraints:
+  en: b69ebf0b7f47ab85
+  zh: 174e72125ffef265
+/tool-registration-ownership-and-management-plugin-implementation-plan/review-focus:
+  en: 409fc24236dd8f03
+  zh: 806095490f584cdd
+/tool-registration-ownership-and-management-plugin-implementation-plan/review-focus/task-1-add-tool-registration-snapshots-to-dsh-tools:
+  en: 6af9b073a40c8fc9
+  zh: 6186faee6cb5a31f
+/tool-registration-ownership-and-management-plugin-implementation-plan/review-focus/task-2-add-the-mcp-client-status-registry:
+  en: 18e7502419e5fc17
+  zh: 513b34bca3d1b10d
+/tool-registration-ownership-and-management-plugin-implementation-plan/review-focus/task-3-extend-the-host-plugin-inventory-remote:
+  en: 439fea4e616a58b1
+  zh: f512f7f292e88b8e
+/tool-registration-ownership-and-management-plugin-implementation-plan/review-focus/task-4-create-the-standalone-plugin-bundle-in-the-empty-project:
+  en: 2f890fc5add5b5ec
+  zh: b4fbe739264d320d
+/tool-registration-ownership-and-management-plugin-implementation-plan/review-focus/task-5-render-tool-and-mcp-status-in-the-standalone-settings-tab:
+  en: 36f20cf64be87d40
+  zh: 8fba489f18fdf549
+/tool-registration-ownership-and-management-plugin-implementation-plan/review-focus/task-6-validate-both-projects-as-one-installable-feature:
+  en: bc3143701cd650de
+  zh: 48eded78231bf700

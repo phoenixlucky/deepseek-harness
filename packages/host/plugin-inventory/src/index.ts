@@ -5,6 +5,8 @@ import type {} from '@deepseek-ai/cordis-plugin-loader'
 // Type-only: the optional agent-preset roster resolved through `ctx.get`.
 import type {} from '@deepseek-ai/dsh-agent-preset-registry'
 import type {} from '@deepseek-ai/dsh-app-boot'
+import type {} from '@deepseek-ai/dsh-tools'
+import type {} from '@deepseek-ai/dsh-mcp-client/registry'
 import { TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
 // Typert-generated ./typert and ./remote artifacts import Zod at runtime.
 import type {} from 'zod'
@@ -49,7 +51,7 @@ const FIBER_PHASE = {
 
 /** Remote-only service exposing the Loader's current non-group entry state. */
 export class PluginInventoryGateway extends TypertRemoteService {
-  static inject = ['loader']
+  static inject = ['loader', 'tools']
 
   constructor(ctx: Context) {
     super(ctx, 'pluginInventory')
@@ -103,7 +105,16 @@ export async function readPluginInventory(ctx: Context): Promise<PluginInventory
   }
   const presets = ctx.get('agentPresets')
   const management = ctx.get('pluginManager') === undefined ? {} : { managementAvailable: true }
-  if (presets === undefined) return { entries, ...management }
+  const tools = ctx.tools.registrations().map(row => ({
+    ...row,
+    owner: row.owner === null ? null : { ...row.owner, entryId: pluginEntryId(row.owner.entryId) },
+  }))
+  const clients = ctx.get('mcpClientRegistry')?.list().map(row => ({
+    ...row,
+    owner: row.owner === null ? null : { ...row.owner, entryId: pluginEntryId(row.owner.entryId) },
+  }))
+  const runtime = { toolRegistrations: tools, ...(clients === undefined ? {} : { mcpClients: clients }) }
+  if (presets === undefined) return { entries, ...management, ...runtime }
   const agentPresets: AgentPresetPluginGroup[] = (await presets.compositionInventory()).map(
     composition => ({
       ...composition,
@@ -117,5 +128,5 @@ export async function readPluginInventory(ctx: Context): Promise<PluginInventory
       }),
     }),
   )
-  return { entries, agentPresets, ...management }
+  return { entries, agentPresets, ...management, ...runtime }
 }

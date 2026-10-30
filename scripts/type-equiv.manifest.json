@@ -1028,6 +1028,11 @@
     },
     {
       "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolRegistrationSnapshot",
+      "source": "packages/core/tools/src/contracts.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
       "symbol": "ResolvedToolSet",
       "source": "packages/core/tools/src/contracts.ts"
     },
@@ -2456,6 +2461,16 @@
       "doc": "docs/subsystems/mcp.md",
       "symbol": "McpResourceProvider",
       "source": "packages/mcp/mcp-resources/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/mcp.md",
+      "symbol": "McpClientSnapshot",
+      "source": "packages/mcp/mcp-client/src/registry.ts"
+    },
+    {
+      "doc": "docs/subsystems/mcp.md",
+      "symbol": "McpClientState",
+      "source": "packages/mcp/mcp-client/src/registry.ts"
     },
     {
       "doc": "docs/subsystems/deliverables.md",

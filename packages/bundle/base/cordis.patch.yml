@@ -488,6 +488,9 @@
     - id: mcp-resources
       name: '@deepseek-ai/dsh-mcp-resources'
 
+    - id: mcp-client-registry
+      name: '@deepseek-ai/dsh-mcp-client/registry'
+
     # ── rows every mode mounts, whose values each overlay may state ──────────────
 
     # Shared tool definitions and the deployment’s native executor.

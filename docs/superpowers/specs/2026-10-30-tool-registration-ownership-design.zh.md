@@ -16,12 +16,14 @@
 - [验证](#validation)
 - [范围之外](#out-of-scope)
 
+<a id="problem"></a>
 ## 问题
 
 Harness 已经会拒绝同一注册作用域内的重复工具名，会在 MCP 实例生命周期内保留唯一的 `serverName`，并通过 Cordis effect 清理注册。这些机制可以阻止多类冲突，但调用方无法查询统一的工具所有者视图，也无法查询 MCP 连接的实时状态。
 
 第一阶段为后续管理界面提供这类视图，不改变注册冲突的裁决方式，也不改变冲突是否会阻止插件激活。
 
+<a id="design"></a>
 ## 设计
 
 `dsh-tools` 通过现有的 `ctx.tools` 服务公开活动工具注册的不可变快照。每条记录包含工具名、可选的 Cordis 插件身份、注册是全局还是作用域内，以及是否声明了条件激活回调。该 API 返回注册记录，不返回某个作用域最终可见的工具列表；现有 `get()`、`definitions()` 和 `schemas()` 语义保持不变。
@@ -30,12 +32,16 @@ Harness 已经会拒绝同一注册作用域内的重复工具名，会在 MCP �
 
 现有 Host `pluginInventory/list` Remote 会把两个清单与它已有的 Loader 和 preset 数据合并返回。工具和 MCP 字段都是可选项，因此未组合对应注册表的 profile 仍可返回原有快照。
 
+<a id="management-plugin"></a>
 ## 管理插件
+
+插件的中文包显示名为“WJ 插件终极调度中心”；运行时注册标签页使用单独的功能名称。
 
 `E:\home\dsh_plugin_manager_wj` 中的独立项目将成为仅含 Client 端的 DSH 插件。它会在现有“内置插件”设置区域增加运行时注册视图，并通过 `pluginInventory/list` 读取合并数据；不添加 Host 数据缓存，也不另建 Remote 协议。视图展示工具名、所有者、作用域、条件激活状态、MCP Server 名称、连接状态和公开工具名。它支持搜索和手动刷新，并保持只读。
 
-插件使用现有 Settings 插槽、本地化服务和 UI 基础组件。其 package 声明 `dsh.client` 入口和 DSH Remote 依赖，因此用户可以在 Harness 提供扩展清单的版本上独立安装或移除此视图。插件不会修改插件组合、MCP 配置、工具注册或冲突裁决。
+插件使用现有 Settings 插槽和本地化服务，并使用标准 React 元素。其 package 声明 `dsh.client` 入口和 DSH Remote 依赖，因此用户可以在 Harness 提供扩展清单的版本上独立安装或移除此视图。插件不会修改插件组合、MCP 配置、工具注册或冲突裁决。
 
+<a id="data-and-lifecycle"></a>
 ## 数据与生命周期
 
 工具快照只包含当前活动的注册。若 Cordis Loader entry 可用，则从注册它的 Cordis fiber 获取所有者；没有 Loader entry 的程序化注册明确返回无所有者，不推测身份。作用域只报告为 `global` 或 `scoped`，不暴露不透明的作用域 key 或 Agent 标识。条件激活字段表示注册声明了条件，不表示它已通过某个具体步骤的条件判断。
@@ -44,16 +50,19 @@ MCP 快照使用 `starting`、`connected`、`reconnecting`、`failed` 和 `stopp
 
 快照方法返回分离且不可变的值。每次同步注册表变更或连接状态转换后，都能读取到最新结果。现有 disposer 仍是移除注册的唯一方式；清单 API 不提供其他修改入口。
 
+<a id="compatibility-and-privacy"></a>
 ## 兼容性与隐私
 
 此项新增保持向后兼容：现有注册调用、重复名称错误、作用域覆盖、MCP 命名空间检查和 HMR 清理行为都保持不变。现有调用方无需读取新 API。快照不包含插件配置、秘密、工具定义、执行函数或不透明的作用域 ID。
 
 Cordis 无法识别所有者时，API 会明确表示身份缺失。API 不读取调用栈，也不根据工具名推测所有者。API 只报告当前运行状态，不跨重载保存历史。
 
+<a id="validation"></a>
 ## 验证
 
 测试覆盖全局和作用域内的工具所有权、所有者缺失、不可变快照、重复注册拦截、条件注册元数据、MCP 状态转换、`serverName` 唯一性，以及卸载和 HMR 后的记录清理。Host Inventory 测试验证组合后的 payload 和无 MCP 实例的 profile。独立插件测试覆盖加载、空状态、错误、重试、搜索和状态呈现。插件包文档说明安装方式和展示的数据；核心包文档说明快照字段和隐私限制。
 
+<a id="out-of-scope"></a>
 ## 范围之外
 
 本阶段不包含插件启停控制、自动冲突修复、配置来源追踪、持久化冲突历史、覆盖所有 Harness 服务的通用注册表，也不新增配置优先级规则。

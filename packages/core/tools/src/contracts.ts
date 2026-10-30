@@ -123,6 +123,14 @@ export interface ToolRegistrationOptions {
   readonly when?: (context: ToolActivationContext) => boolean | Promise<boolean>
 }
 
+/** Safe metadata for one currently active tool registration. */
+export interface ToolRegistrationSnapshot {
+  readonly name: string
+  readonly owner: { readonly entryId: string; readonly moduleName: string } | null
+  readonly scope: 'global' | 'scoped'
+  readonly conditional: boolean
+}
+
 /** One step's admitted registrations, also used by nested PTC calls. */
 export interface ResolvedToolSet {
   /** Close admission after the step's tool batch settles. */

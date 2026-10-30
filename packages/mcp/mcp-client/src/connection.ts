@@ -24,6 +24,7 @@ import { createTransport } from './transport.ts'
 import { syncTools } from './tools.ts'
 import type { ToolBridgeOptions, ToolDisposers } from './tools.ts'
 import type { Config } from './index.ts'
+import type { McpClientState } from './registry.ts'
 
 /** Automatic reconnect policy for one MCP server connection. */
 export interface ReconnectConfig {
@@ -122,9 +123,15 @@ export interface ConnectionHandle extends ServerContext {
  * @param ctx - Cordis context providing the `tools` registry and logger.
  * @param config - Resolved plugin config selecting the transport and server identity.
  * @param policy - Resolved reconnect policy from {@link resolveReconnectPolicy}.
+ * @param report - Optional lifecycle metadata publisher.
  * @returns Handle with a `ready` promise for startup-await and a `dispose` for teardown.
  */
-export function startConnection(ctx: Context, config: Config, policy: ResolvedReconnectPolicy): ConnectionHandle {
+export function startConnection(
+  ctx: Context,
+  config: Config,
+  policy: ResolvedReconnectPolicy,
+  report: (state: McpClientState, toolNames?: readonly string[]) => void = () => {},
+): ConnectionHandle {
   const label = `mcp-client(${config.serverName})`
   const incompleteDisposalMessage = `${label}: transport closure could not be confirmed during disposal — server shutdown may be incomplete`
   const opts: ToolBridgeOptions = {
@@ -170,6 +177,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     const run = syncChain.then(async () => {
       if (!isCurrent(generation)) return
       disposers = await syncTools(generation, ctx, syncOpts, disposers)
+      report('connected', [...disposers.keys()])
     })
     // The chain tail must survive a failed sync; the enqueuing caller owns reporting.
     syncChain = run.catch(() => {})
@@ -190,6 +198,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     if (!quiesced) {
       client = undefined
       closeClient = undefined
+      report('failed', [...disposers.keys()])
       ctx.logger.error(`${label}: failed generation could not confirm transport closure — reconnect stopped to avoid overlapping server processes; reload the plugin or restart the Host to retry`)
       return
     }
@@ -211,12 +220,14 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   function scheduleReconnect(): void {
     const lostEstablishedConnection = connectedAt !== undefined
     if (!policy.enabled) {
+      report('failed', [...disposers.keys()])
       const message = lostEstablishedConnection
         ? 'connection lost and reconnect is disabled — registered tools will fail until an HMR reload or Host restart'
         : 'connection failed and reconnect is disabled — no tools were registered; reload the plugin or restart the Host to connect'
       ctx.logger.error(`${label}: ${message}`)
       return
     }
+    report('reconnecting', [...disposers.keys()])
     // A connection that stayed up past the stability window (= maxDelayMs, the
     // longest backoff spacing) ended the previous outage: start a fresh budget.
     if (connectedAt !== undefined && Date.now() - connectedAt >= policy.maxDelayMs) failedAttempts = 0
@@ -228,6 +239,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       syncChain = syncChain.then(() => {
         for (const dispose of disposers.values()) dispose()
         disposers = new Map()
+        report('failed')
         serverInstructions = ''
       })
       ctx.logger.error(`${label}: giving up after ${policy.maxAttempts} consecutive failed reconnect attempts — tools unregistered; reload the plugin or restart the Host to reconnect`)
@@ -393,6 +405,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       },
     },
     async dispose(): Promise<void> {
+      report('stopped', [...disposers.keys()])
       disposed = true
       serverInstructions = ''
       if (reconnectTimer !== undefined) {

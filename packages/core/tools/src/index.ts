@@ -1,5 +1,6 @@
 /** Tool definitions and scoped dispatch to plugin-owned executors. @module */
 import { Context, Service } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import z from '@deepseek-ai/schemastery'
 import { AnonymousEntries, NamedEntries, ScopedLayers, scopeOf, scopeChainOf } from '@deepseek-ai/dsh-scope'
 import type { ScopeKey, ScopeLayer } from '@deepseek-ai/dsh-scope'
@@ -12,7 +13,7 @@ import { assertSupportedJsonSchema } from './json-schema.ts'
 import { RUN_CODE_NAME, ToolActivationError } from './contracts.ts'
 import type {
   ToolDefinition, ToolRestriction, ToolExecution, ToolGuard,
-  ResolvedToolSet, ToolActivationContext, ToolRegistrationOptions,
+  ResolvedToolSet, ToolActivationContext, ToolRegistrationOptions, ToolRegistrationSnapshot,
 } from './contracts.ts'
 
 declare module '@deepseek-ai/dsh-system-prompt' {
@@ -45,6 +46,7 @@ interface CompiledToolRestriction {
 interface ToolRegistration {
   readonly definition: ToolDefinition
   readonly when: ToolRegistrationOptions['when']
+  readonly owner: ToolRegistrationSnapshot['owner']
 }
 
 /** One scope's complete registry view, derived in a single layer traversal. */
@@ -145,11 +147,28 @@ export class ToolsService extends Service {
     if (name === RUN_CODE_NAME) {
       throw new Error(`tool name "${RUN_CODE_NAME}" is reserved for the PTC mode presentation transport and cannot be registered or shadowed`)
     }
+    const entry = this.ctx.fiber.entry
+    const owner = entry === undefined ? null : Object.freeze({ entryId: entry.id, moduleName: entry.options.name })
     return this.layers.effect(
       this.ctx,
-      layer => layer.tools.insert(name, { definition, when: options.when }),
+      layer => layer.tools.insert(name, { definition, when: options.when, owner }),
       { label: 'tools.register()' },
     )
+  }
+
+  /**
+   * Return detached registration metadata without tool definitions or scope identities.
+   * @returns Frozen rows for active registrations in global and scoped layers.
+   */
+  registrations(): readonly ToolRegistrationSnapshot[] {
+    return Object.freeze(this.layers.layers().flatMap(({ layer, scoped }) =>
+      [...layer.tools.entries()].map(([name, registration]) => Object.freeze({
+        name,
+        owner: registration.owner,
+        scope: scoped ? 'scoped' as const : 'global' as const,
+        conditional: registration.when !== undefined,
+      })),
+    ))
   }
 
   /**

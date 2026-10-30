@@ -57,6 +57,8 @@ flowchart LR
   pkg_mcp_resources["mcp-resources"]
   svc_mcpResources["ctx.mcpResources<br/>Scoped MCP resource access"]
   pkg_mcp_client["mcp-client"]
+  svc_mcpClientRegistry["ctx.mcpClientRegistry<br/>MCP client lifecycle inventory"]
+  pkg_plugin_inventory["plugin-inventory"]
   pkg_browser_use["browser-use"]
   svc_browserUse["ctx.browserUse<br/>Browser-use provider registration"]
   pkg_experimental_browser_use_playwright_mcp["experimental-browser-use-playwright-mcp"]
@@ -400,6 +402,7 @@ flowchart LR
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
+  pkg_mcp_client --> svc_mcpClientRegistry
   pkg_mcp_client --> svc_mcpResources
   pkg_mcp_resources --> svc_mcpResources
   pkg_message_feedback --> svc_messageFeedback
@@ -535,6 +538,7 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_mcpClientRegistry --> pkg_plugin_inventory
   svc_mcpResources --> pkg_mcp_resources
   svc_officeToPdf --> pkg_client_ui_sidebar_documentpreview
   svc_otel --> pkg_host_product_telemetry_otel
@@ -665,6 +669,7 @@ flowchart LR
 | `ctx.worktrees` | `seam` | [`experimental-worktree`](../packages/experimental/worktree) | [`experimental-worktree`](../packages/experimental/worktree) | [`experimental-tool-worktree`](../packages/experimental/tool-worktree) | - | Explicit experimental creation from a pinned local commit. Existing write permissions govern checkout and shared Git metadata; the working-directory service owns the resulting Session directory. |
 | `ctx.workingDirectory` | `seam` | [`working-directory`](../packages/session/working-directory) | [`working-directory`](../packages/session/working-directory) | [`tool-working-directory`](../packages/session/tool-working-directory), [`tool-fs`](../packages/fs/tool-fs), [`tool-bash`](../packages/shell/tool-bash), [`tool-pwsh`](../packages/shell/tool-pwsh), [`subagent`](../packages/subagent/subagent), [`sdk-jsonrpc-server`](../packages/sdk/server) | - | One Session projection owns the effective execution directory. The filesystem validates changes; user context reports them while original metadata and write grants stay fixed. |
 | `ctx.mcpResources` | `seam` | [`mcp-resources`](../packages/mcp/mcp-resources) | [`mcp-client`](../packages/mcp/mcp-client) | [`mcp-resources`](../packages/mcp/mcp-resources) | - | Connection-owned providers serve shared resource tools in the calling agent scope. |
+| `ctx.mcpClientRegistry` | `service` | [`mcp-client`](../packages/mcp/mcp-client) | - | `plugin-inventory` | - | Tracks active MCP owners, scope, connection state, and public tool names for read-only Host inventory. |
 | `ctx.browserUse` | `seam` | [`browser-use`](../packages/browser-use/browser-use) | [`experimental-browser-use-playwright-mcp`](../packages/experimental/browser-use-playwright-mcp), [`experimental-browser-use-chrome-devtools-mcp`](../packages/experimental/browser-use-chrome-devtools-mcp), [`experimental-browser-use-stagehand-native`](../packages/experimental/browser-use-stagehand-native) | [`experimental-browser-use-playwright-mcp`](../packages/experimental/browser-use-playwright-mcp), [`experimental-browser-use-chrome-devtools-mcp`](../packages/experimental/browser-use-chrome-devtools-mcp), [`experimental-browser-use-stagehand-native`](../packages/experimental/browser-use-stagehand-native) | - | One provider-owned name per service instance. Providers own their tools and browser resources per live Session; the shared service has no browser operation API. |
 | `ctx.computerUse` | `seam` | [`computer-use`](../packages/computer-use/computer-use) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | [`experimental-computer-use-cua-driver-mcp`](../packages/experimental/computer-use-cua-driver-mcp), [`experimental-computer-use-cua-driver-native`](../packages/experimental/computer-use-cua-driver-native) | - | One provider-owned name per service instance. Each provider also owns its model tools; the service has no common action API, runtime selection, or Session workflow lock. |
 | `ctx.cuaAccess` | `core` | [`cua`](../packages/experimental/cua) | - | [`cua`](../packages/experimental/cua) | - | The native provider owns application consent and cancellation; the optional Client page queries and changes those decisions through its Remote. |

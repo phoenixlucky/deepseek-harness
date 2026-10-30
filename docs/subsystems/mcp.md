@@ -44,6 +44,23 @@ The client is a per-server connection plugin and a consumer of the harness tool 
 
 Configured `serverName` identifies a server in its registration scope. Two entries in that scope cannot reserve the same name; separate Agent scopes can reuse it. Public tool names include the configured server name, so equally named tools from different servers remain distinct. Registration effects own names and discovered tools; plugin disposal closes the connection and removes its contributions.
 
+The base profile mounts `ctx.mcpClientRegistry`, which records each active client’s Loader owner when available, global or scoped visibility, connection state, and public tool names. Rows leave with the client after teardown settles. The registry reports no endpoint, headers, credentials, or transport configuration. Plugin Inventory combines these records with the tool registry's registration snapshots for read-only diagnostics.
+
+```ts type-equiv
+/** Point-in-time metadata for one MCP client instance. */
+interface McpClientSnapshot {
+  readonly serverName: string
+  readonly owner: { readonly entryId: string; readonly moduleName: string } | null
+  readonly scope: 'global' | 'scoped'
+  readonly state: McpClientState
+  readonly toolNames: readonly string[]
+}
+```
+
+```ts type-equiv
+type McpClientState = 'starting' | 'connected' | 'reconnecting' | 'failed' | 'stopped'
+```
+
 The [native Cua Driver provider](../../packages/experimental/computer-use-cua-driver-native/README.md) shares the client's exported result adapter without opening an MCP connection. Desktop provider selection belongs to the [computer-use subsystem](computer-use.md).
 
 -----
@@ -118,6 +135,31 @@ MCP prompt templates, human-input elicitation, task-based execution, and resourc
 ## Cordis API
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxmcpclientregistry--mcpclientregistry"></a>
+
+### `ctx.mcpClientRegistry` — `McpClientRegistry`
+
+Read metadata for active MCP connections without exposing configuration.
+
+```ts cordis-catalog
+/**
+ * List detached, immutable snapshots in registration order.
+ * @returns Frozen snapshots without transport configuration or scope identities.
+ */
+list(): readonly McpClientSnapshot[]
+
+/**
+ * Register one connection and return its state publisher and disposer.
+ * @param serverName - stable server namespace used by this instance.
+ * @param owner - Loader identity when available, otherwise null.
+ * @param scoped - whether the client belongs to an Agent scope.
+ * @returns State publisher and idempotent record disposer.
+ */
+register( serverName: string, owner: McpClientSnapshot['owner'], scoped: boolean, ): { update(state: McpClientState, toolNames?: readonly string[]): void; dispose(): void }
+```
+
+Source: [`packages/mcp/mcp-client/src/registry.ts`](../../packages/mcp/mcp-client/src/registry.ts)
 
 <a id="ctxmcpresources--mcpresourceruntime"></a>
 

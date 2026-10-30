@@ -2028,6 +2028,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'mcpClientRegistry',
+    summary: 'Read metadata for active MCP connections without exposing configuration.',
+    description: 'Read metadata for active MCP connections without exposing configuration.',
+    methods: [
+      {
+        signature: 'list(): readonly McpClientSnapshot[]',
+        description: 'List detached, immutable snapshots in registration order.',
+        parameters: [],
+        returns: 'Frozen snapshots without transport configuration or scope identities.',
+      },
+      {
+        signature: 'register( serverName: string, owner: McpClientSnapshot[\'owner\'], scoped: boolean, ): { update(state: McpClientState, toolNames?: readonly string[]): void; dispose(): void }',
+        description: 'Register one connection and return its state publisher and disposer.',
+        parameters: [{ name: 'serverName', description: 'stable server namespace used by this instance.' }, { name: 'owner', description: 'Loader identity when available, otherwise null.' }, { name: 'scoped', description: 'whether the client belongs to an Agent scope.' }],
+        returns: 'State publisher and idempotent record disposer.',
+      },
+    ],
+  },
+  {
     key: 'mcpResources',
     summary: 'Scoped resource access plus three tools shared by configured MCP servers.',
     description: 'Scoped resource access plus three tools shared by configured MCP servers.',
@@ -3975,6 +3994,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Register globally or in the calling agent scope. Scoped tools shadow globals; duplicates within one layer and the reserved `run_code` name fail.',
         parameters: [{ name: 'definition', description: 'tool schema, execution, and optional finalization/presentation callbacks.' }, { name: 'options', description: 'optional step-time activation condition.' }],
         returns: 'the exact disposer that unregisters the tool.',
+      },
+      {
+        signature: 'registrations(): readonly ToolRegistrationSnapshot[]',
+        description: 'Return detached registration metadata without tool definitions or scope identities.',
+        parameters: [],
+        returns: 'Frozen rows for active registrations in global and scoped layers.',
       },
       {
         signature: 'restrict(filter: ToolRestriction): () => void',
@@ -7004,6 +7029,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type MatcherValue = string | number | boolean | null | RegExp | readonly (string | number | boolean | null)[];',
   },
   {
+    name: 'McpClientSnapshot',
+    declaration: 'export interface McpClientSnapshot {\n    readonly serverName: string;\n    readonly owner: {\n        readonly entryId: string;\n        readonly moduleName: string;\n    } | null;\n    readonly scope: \'global\' | \'scoped\';\n    readonly state: McpClientState;\n    readonly toolNames: readonly string[];\n}',
+  },
+  {
+    name: 'McpClientState',
+    declaration: 'export type McpClientState = \'starting\' | \'connected\' | \'reconnecting\' | \'failed\' | \'stopped\';',
+  },
+  {
     name: 'McpResourceProvider',
     declaration: 'export interface McpResourceProvider {\n    request(request: McpResourceRequest, exec: ToolExecution): Promise<JsonValue>;\n}',
   },
@@ -9456,6 +9489,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ToolRegistrationOptions {\n    readonly when?: (context: ToolActivationContext) => boolean | Promise<boolean>;\n}',
   },
   {
+    name: 'ToolRegistrationSnapshot',
+    declaration: 'export interface ToolRegistrationSnapshot {\n    readonly name: string;\n    readonly owner: {\n        readonly entryId: string;\n        readonly moduleName: string;\n    } | null;\n    readonly scope: \'global\' | \'scoped\';\n    readonly conditional: boolean;\n}',
+  },
+  {
     name: 'ToolRemovalBlock',
     declaration: 'export interface ToolRemovalBlock {\n    type: \'tool-removal\';\n    toolName: string;\n}',
   },
@@ -9489,7 +9526,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolsService',
-    declaration: 'export class ToolsService extends Service {\n    static inject;\n    static Config;\n    constructor(ctx: Context);\n    register(definition: ToolDefinition, options: ToolRegistrationOptions = {}): () => void;\n    restrict(filter: ToolRestriction): () => void;\n    get(name: string, scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolDefinition | undefined;\n    executable(name: string, scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolDefinition | undefined;\n    async resolve(context: ToolActivationContext): Promise<ResolvedToolSet>;\n    definitions(scope?: ScopeKey, toolSet?: ResolvedToolSet): readonly ToolDefinition[];\n    schemas(scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolSchema[];\n    setExecutor(executor: ToolExecutor): () => void;\n    async execute(input: ToolBatchInput): Promise<ToolBatchResult>;\n    guard(guard: ToolGuard): () => void;\n    checkGuards(exec: ToolExecution): string | undefined;\n}',
+    declaration: 'export class ToolsService extends Service {\n    static inject;\n    static Config;\n    constructor(ctx: Context);\n    register(definition: ToolDefinition, options: ToolRegistrationOptions = {}): () => void;\n    registrations(): readonly ToolRegistrationSnapshot[];\n    restrict(filter: ToolRestriction): () => void;\n    get(name: string, scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolDefinition | undefined;\n    executable(name: string, scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolDefinition | undefined;\n    async resolve(context: ToolActivationContext): Promise<ResolvedToolSet>;\n    definitions(scope?: ScopeKey, toolSet?: ResolvedToolSet): readonly ToolDefinition[];\n    schemas(scope?: ScopeKey, toolSet?: ResolvedToolSet): ToolSchema[];\n    setExecutor(executor: ToolExecutor): () => void;\n    async execute(input: ToolBatchInput): Promise<ToolBatchResult>;\n    guard(guard: ToolGuard): () => void;\n    checkGuards(exec: ToolExecution): string | undefined;\n}',
   },
   {
     name: 'ToolUpdate',

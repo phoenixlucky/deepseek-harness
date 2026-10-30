@@ -126,6 +126,8 @@ The exported `createMcpToolDefinition(ctx, options)` adapts an upstream tool sch
 
 `apply` resolves the reconnect policy, reserves the `serverName` inside the current registration scope, starts the supervisor, and awaits the initial connection plus discovery. Independent Agent scopes may reuse the same namespace because their tools and transports are isolated; a duplicate inside one scope fails at load. The supervisor serializes every sync — initial, notification, and reconnect — through one queue so two syncs can never interleave their dispose-previous/register-next swap. Disposal cancels pending reconnects, closes the negotiating transport or attached client, waits for the in-flight attempt and queued syncs to quiesce, and unregisters the current generation.
 
+The shared `mcpClientRegistry` records each instance's owner, scope, connection state, and public tool names. `starting`, `connected`, `reconnecting`, `failed`, and `stopped` follow the connection supervisor; disposal removes the row after the connection and tool teardown settle. The registry omits transport configuration, endpoint URLs, headers, and credentials.
+
 The SDK receives tool-list changes through legacy notifications or a modern subscription. The supervisor queues each re-sync; a fetch failure keeps the previous generation registered, while a registration conflict rolls back the attempted generation. Each outage shares one attempt budget: after `maxAttempts` consecutive failures the tools are unregistered and reconnection stops, and a connection that stays up past `maxDelayMs` resets the budget.
 
 ### Tool execution internals

@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Clients can call `pluginInventory/list` to display the host’s current plugins in load order, including each entry’s identifier, module specifier, effective enablement, live phase, and available display text. Deployments with an agent-preset roster also report each preset’s metadata, health, and flattened plugin composition; without a roster, preset data is absent. Each response is a point-in-time, read-only snapshot for display and diagnostics: it cannot mutate plugins and provides no history or change subscription.
+Clients can call `pluginInventory/list` to display the host’s current plugins in load order, including each entry’s identifier, module specifier, effective enablement, live phase, and available display text. The snapshot also includes active tool registrations and, when composed, MCP client state. Deployments with an agent-preset roster report each preset’s metadata, health, and flattened plugin composition; without a roster, preset data is absent. Each response is a point-in-time, read-only snapshot for display and diagnostics: it cannot mutate plugins and provides no history or change subscription.
 
 ## Table of Contents
 
@@ -32,6 +32,8 @@ Call `pluginInventory/list` when a client or settings page needs to show what is
 Each row is one non-group Loader entry: its entry id, the exact module specifier, the effective enablement (including disabled ancestor groups), and the current root Fiber phase. `pending` means the entry waits to load, `loading` that it is being read, `active` that it is running, `failed` that its fiber rejected, and `unloading` that it is being torn down; `null` means no live root Fiber exists at all. Structural group rows are skipped.
 
 Loader and preset rows can carry optional `meta` with a title, description, or metadata diagnostic. The Host returns available translations and literal fallbacks; the Client selects its language. Metadata diagnostics do not change enablement or fiber phase.
+
+`toolRegistrations` reports active tool names, optional Loader owners, global or scoped visibility, and declared conditional activation. `mcpClients`, when its registry is composed, reports each server's optional owner, scope, connection state, and public tool names. These runtime rows omit configuration, secrets, tool definitions, execution callbacks, and opaque scope identities.
 
 ### Per-preset compositions
 

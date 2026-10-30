@@ -183,6 +183,17 @@ export class ScopedLayers<L extends ScopeLayer> {
   }
 
   /**
+   * Snapshot existing layers without exposing their opaque scope identities.
+   * @returns Layers in global-then-scoped registration order.
+   */
+  layers(): readonly { readonly layer: L; readonly scoped: boolean }[] {
+    return [
+      { layer: this.global, scoped: false },
+      ...[...this.scoped.values()].map(layer => ({ layer, scoped: true })),
+    ]
+  }
+
+  /**
    * Existing overlays along the scope's parent chain ({@link scopeChainOf}),
    * farthest ancestor first and the exact scope last, so a caller layering
    * them in order gives the nearest scope the final word.

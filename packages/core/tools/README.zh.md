@@ -29,6 +29,8 @@ kind: "package-reference"
 
 在任何 agent 调用工具的地方挂载 `dsh-tools`：它提供 `ctx.tools`，即每个工具插件注册进去、循环分发所经过的注册表。注册一个工具就足以让它可见——注册表会自动把其 schema 送入系统提示词组装。
 
+`ctx.tools.registrations()` 为活动注册返回冻结且分离的元数据行：工具名、可选 Cordis Loader 所属者、全局或作用域内可见性，以及注册是否带有步骤条件。它不会返回工具定义、回调或不透明的作用域标识。Host 诊断通过 Plugin Inventory 暴露相同记录。
+
 ### 注册工具
 
 `defineTool` 构建类型化工具定义：面向模型的名称、描述与参数 schema、规范输出声明，以及只返回所声明 JSON 值的 `execute` 主体。模型参数在执行前被校验；无效输入变成普通错误结果。

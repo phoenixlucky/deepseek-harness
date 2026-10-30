@@ -14,18 +14,23 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/cordis-plugin-loader'
 import z from '@deepseek-ai/schemastery'
 import { scopeOf } from '@deepseek-ai/dsh-scope'
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
 import { DEFAULT_MAX_INSTRUCTION_BYTES, RECONNECT_DEFAULTS, resolveReconnectPolicy, startConnection } from './connection.ts'
 import type { ReconnectConfig } from './connection.ts'
 import { registerServerContext } from './server-context.ts'
+import type {} from './registry.ts'
+import type { McpClientState } from './registry.ts'
 // Side-effect type import: declaration-merges `ctx.tools` onto Context.
 import type {} from '@deepseek-ai/dsh-tools'
 
 export { createMcpToolDefinition } from './tools.ts'
 export type { McpResult, McpToolDefinitionOptions } from './tools.ts'
 export type { ReconnectConfig, ResolvedReconnectPolicy } from './connection.ts'
+export { McpClientRegistry } from './registry.ts'
+export type { McpClientSnapshot, McpClientState } from './registry.ts'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'mcp-client'
@@ -147,7 +152,7 @@ export const Config = z.union([
  * Connect one MCP server and publish its initial tool generation before activation.
  * This entry remains explicitly `async`: Cordis treats a prototype-bearing
  * ordinary function as a constructor, whose returned Promise is not startup work.
- * @param ctx - plugin context carrying the tool registry.
+ * @param ctx - plugin context carrying tool and MCP inventory registries.
  * @param config - resolved transport and server namespace configuration.
  * @returns startup readiness after connection and initial tool discovery settle.
  */
@@ -156,6 +161,23 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   // construction that bypassed Schemastery) rejects THIS instance before any
   // effect registers.
   const reconnect = resolveReconnectPolicy(config.reconnect, `mcp-client(${config.serverName}): reconnect`)
+  const entry = ctx.fiber.entry
+  let inventory: { update(state: McpClientState, toolNames?: readonly string[]): void } | undefined
+  let inventoryState: McpClientState = 'starting'
+  let inventoryToolNames: readonly string[] = []
+  ctx.inject(['mcpClientRegistry'], (child) => {
+    const record = child.mcpClientRegistry.register(
+      config.serverName,
+      entry === undefined ? null : { entryId: entry.id, moduleName: entry.options.name },
+      scopeOf(ctx) !== undefined,
+    )
+    inventory = record
+    record.update(inventoryState, inventoryToolNames)
+    child.effect(() => () => {
+      record.dispose()
+      if (inventory === record) inventory = undefined
+    }, 'mcp-client.inventory')
+  })
 
   // Reserve the namespace next: a duplicate `serverName` fails THIS instance
   // at load with an actionable error and leaves the earlier instance intact.
@@ -178,7 +200,11 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   // The supervisor owns the client/transport generations, the reconnect
   // loop, and the live tool registrations; disposal stops reconnection,
   // quiesces in-flight work, and unregisters the current generation.
-  const connection = startConnection(ctx, config, reconnect)
+  const connection = startConnection(ctx, config, reconnect, (state, names) => {
+    inventoryState = state
+    if (names !== undefined) inventoryToolNames = names
+    inventory?.update(inventoryState, inventoryToolNames)
+  })
   registerServerContext(ctx, config.serverName, connection)
   let stopping: Promise<void> | undefined
   const dispose = (): Promise<void> => stopping ??= connection.dispose()

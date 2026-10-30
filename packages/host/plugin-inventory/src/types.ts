@@ -74,4 +74,25 @@ export interface PluginInventorySnapshot {
    * composed in this deployment.
    */
   readonly agentPresets?: readonly AgentPresetPluginGroup[]
+  /** Active tool registrations, when the Host composes dsh-tools. */
+  readonly toolRegistrations?: readonly ToolRegistrationInventoryRow[]
+  /** MCP clients visible in this Host scope, when the registry is composed. */
+  readonly mcpClients?: readonly McpClientInventoryRow[]
+}
+
+/** One active tool name and its non-executable registration metadata. */
+export interface ToolRegistrationInventoryRow {
+  readonly name: string
+  readonly owner: { readonly entryId: PluginEntryId; readonly moduleName: string } | null
+  readonly scope: 'global' | 'scoped'
+  readonly conditional: boolean
+}
+
+/** One active MCP connection and its public lifecycle metadata. */
+export interface McpClientInventoryRow {
+  readonly serverName: string
+  readonly owner: { readonly entryId: PluginEntryId; readonly moduleName: string } | null
+  readonly scope: 'global' | 'scoped'
+  readonly state: 'starting' | 'connected' | 'reconnecting' | 'failed' | 'stopped'
+  readonly toolNames: readonly string[]
 }

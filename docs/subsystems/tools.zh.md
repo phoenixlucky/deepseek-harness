@@ -207,6 +207,18 @@ interface ToolRegistrationOptions {
 }
 ```
 
+`ctx.tools.registrations()` 可读取全局和 Agent 作用域中活动注册的元数据。它报告声明中是否有条件，不代表条件已在某个具体步骤中通过；不透明的作用域 key 和可执行定义不会被返回。
+
+```ts type-equiv
+/** Safe metadata for one currently active tool registration. */
+interface ToolRegistrationSnapshot {
+  readonly name: string
+  readonly owner: { readonly entryId: string; readonly moduleName: string } | null
+  readonly scope: 'global' | 'scoped'
+  readonly conditional: boolean
+}
+```
+
 ```ts type-equiv
 /** One step's admitted registrations, also used by nested PTC calls. */
 interface ResolvedToolSet {
@@ -649,6 +661,12 @@ Concrete tool registry and scoped executor dispatcher.
  * @returns the exact disposer that unregisters the tool.
  */
 register(definition: ToolDefinition, options: ToolRegistrationOptions = {}): () => void
+
+/**
+ * Return detached registration metadata without tool definitions or scope identities.
+ * @returns Frozen rows for active registrations in global and scoped layers.
+ */
+registrations(): readonly ToolRegistrationSnapshot[]
 
 /**
  * Restrict global tools for the calling agent scope. Empty filters, unknown

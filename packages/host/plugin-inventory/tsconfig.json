@@ -23,6 +23,8 @@
     {
       "path": "../../preset/agent-preset-registry"
     },
+    { "path": "../../core/tools" },
+    { "path": "../../mcp/mcp-client" },
     {
       "path": "../../util/brand"
     },

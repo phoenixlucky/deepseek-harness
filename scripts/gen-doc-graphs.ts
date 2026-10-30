@@ -246,6 +246,14 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Connection-owned providers serve shared resource tools in the calling agent scope.',
   },
   {
+    key: 'mcpClientRegistry',
+    pkg: 'mcp-client',
+    title: 'MCP client lifecycle inventory',
+    mode: 'service',
+    consumers: ['plugin-inventory'],
+    note: 'Tracks active MCP owners, scope, connection state, and public tool names for read-only Host inventory.',
+  },
+  {
     key: 'browserUse',
     pkg: 'browser-use',
     title: 'Browser-use provider registration',

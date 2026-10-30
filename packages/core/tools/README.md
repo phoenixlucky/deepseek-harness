@@ -29,6 +29,8 @@ Use `dsh-tools` to expose typed capabilities to models, validate calls, enforce 
 
 Mount `dsh-tools` wherever agents call tools: it provides `ctx.tools`, the registry every tool plugin registers into and the selected executor resolves. Registering a tool is enough to make it visible — the registry feeds its schemas into the system-prompt assembly automatically.
 
+`ctx.tools.registrations()` returns frozen, detached metadata rows for active registrations: name, optional Cordis Loader owner, global or scoped visibility, and whether the registration has a step condition. It never returns tool definitions, callbacks, or opaque scope identities. Host diagnostics expose the same rows through Plugin Inventory.
+
 ### Register a tool
 
 `defineTool` builds a typed tool definition: a model-facing name, description, and parameter schema, a canonical output declaration, and an `execute` body that returns only the declared JSON value. Model arguments are validated before execution; invalid input becomes a normal error result.

@@ -18,6 +18,10 @@
       "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
+    "./registry": {
+      "types": "./lib/types/registry.d.ts",
+      "default": "./lib/types/registry.js"
+    },
     "./src/*": "./src/*",
     "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
@@ -25,10 +29,12 @@
   "files": [
     "locale/*.json",
     "lib/index.js",
+    "lib/types/**/*.js",
     "lib/types/**/*.d.ts"
   ],
   "license": "MIT",
   "peerDependencies": {
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/dsh-attachment": "workspace:*",
     "@deepseek-ai/dsh-llm": "workspace:*",
     "@deepseek-ai/dsh-scope": "workspace:*",
@@ -39,12 +45,18 @@
     "@deepseek-ai/dsh-mcp-resources": "workspace:*",
     "@deepseek-ai/dsh-system-prompt": "workspace:*"
   },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis-plugin-loader": { "optional": true },
+    "@deepseek-ai/dsh-mcp-resources": { "optional": true },
+    "@deepseek-ai/dsh-system-prompt": { "optional": true }
+  },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:~",
     "@modelcontextprotocol/client": "2.2.0",
     "@deepseek-ai/dsh-util-values": "workspace:*"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis-plugin-loader": "workspace:~",
     "@deepseek-ai/dsh-attachment": "workspace:*",
     "@deepseek-ai/dsh-attachment-local": "workspace:*",
     "@deepseek-ai/dsh-llm": "workspace:*",
@@ -63,13 +75,5 @@
     "zod": "4.4.3",
     "@deepseek-ai/dsh-mcp-resources": "workspace:*",
     "@deepseek-ai/dsh-system-prompt": "workspace:*"
-  },
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-mcp-resources": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-system-prompt": {
-      "optional": true
-    }
   }
 }

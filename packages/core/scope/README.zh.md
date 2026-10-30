@@ -43,7 +43,7 @@ await scope.dispose()   // unwinds every registration made through scope.ctx
 
 ### 构建带作用域的注册表层
 
-注册表作者使用 `ScopedLayers`、`NamedEntries` 与 `AnonymousEntries` 持有一个立即构造的全局层加惰性创建的精确作用域层：读取从不创建层，`merge()` 沿作用域链物化按插入序的具名遮蔽，`effect()` 从同一上下文推导可见性与所有权。只有当整个聚合为空时才回收作用域层。
+注册表作者使用 `ScopedLayers`、`NamedEntries` 与 `AnonymousEntries` 持有一个立即构造的全局层加惰性创建的精确作用域层：读取从不创建层，`merge()` 沿作用域链物化按插入序的具名遮蔽，`layers()` 可枚举已有层但不返回不透明 key，`effect()` 从同一上下文推导可见性与所有权。只有当整个聚合为空时才回收作用域层。
 
 -----
 

@@ -44,6 +44,23 @@ MCP 服务器需要主动配置。在目标 Cordis 作用域中，为每台服�
 
 配置的 `serverName` 在注册作用域内标识服务器。同一作用域中的两个条目不能占用相同名称；不同 Agent 作用域可以复用该名称。公开工具名包含配置的服务器名称，因此不同服务器的同名工具仍可区分。注册副作用拥有名称和已发现工具；插件释放时关闭连接并移除其贡献。
 
+Base profile 会挂载 `ctx.mcpClientRegistry`，记录每个活动客户端在可用时对应的 Loader 所属者、全局或作用域内可见性、连接状态和公开工具名。连接与资源清理完成后，该客户端记录会随之移除。注册表不报告端点、请求头、凭据或传输配置。Plugin Inventory 会把这些记录与工具注册快照合并，供只读诊断使用。
+
+```ts type-equiv
+/** Point-in-time metadata for one MCP client instance. */
+interface McpClientSnapshot {
+  readonly serverName: string
+  readonly owner: { readonly entryId: string; readonly moduleName: string } | null
+  readonly scope: 'global' | 'scoped'
+  readonly state: McpClientState
+  readonly toolNames: readonly string[]
+}
+```
+
+```ts type-equiv
+type McpClientState = 'starting' | 'connected' | 'reconnecting' | 'failed' | 'stopped'
+```
+
 [原生 Cua Driver 提供方](../../packages/experimental/computer-use-cua-driver-native/README.zh.md) 复用客户端导出的结果适配器，无需打开 MCP 连接。桌面提供方选择属于[计算机使用子系统](computer-use.zh.md)。
 
 -----
@@ -118,6 +135,31 @@ interface McpResourceProvider {
 ## Cordis API
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.zh.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxmcpclientregistry--mcpclientregistry"></a>
+
+### `ctx.mcpClientRegistry` — `McpClientRegistry`
+
+Read metadata for active MCP connections without exposing configuration.
+
+```ts cordis-catalog
+/**
+ * List detached, immutable snapshots in registration order.
+ * @returns Frozen snapshots without transport configuration or scope identities.
+ */
+list(): readonly McpClientSnapshot[]
+
+/**
+ * Register one connection and return its state publisher and disposer.
+ * @param serverName - stable server namespace used by this instance.
+ * @param owner - Loader identity when available, otherwise null.
+ * @param scoped - whether the client belongs to an Agent scope.
+ * @returns State publisher and idempotent record disposer.
+ */
+register( serverName: string, owner: McpClientSnapshot['owner'], scoped: boolean, ): { update(state: McpClientState, toolNames?: readonly string[]): void; dispose(): void }
+```
+
+Source: [`packages/mcp/mcp-client/src/registry.ts`](../../packages/mcp/mcp-client/src/registry.ts)
 
 <a id="ctxmcpresources--mcpresourceruntime"></a>
 
