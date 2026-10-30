@@ -1,0 +1,31 @@
+# Bilingual-pair consistency record for 2026-10-30-tool-registration-ownership-design.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/specs/2026-10-30-tool-registration-ownership-design.md
+/tool-registration-ownership-and-status:
+  en: 2f9e1a575e740bdd
+  zh: 6fcd2eb90548626b
+/tool-registration-ownership-and-status/summary:
+  en: 4e4d4556af69905f
+  zh: 43f36da6251823ce
+/tool-registration-ownership-and-status/table-of-contents:
+  en: c504ca2116751457
+  zh: d0e7273dd0b0efd5
+/tool-registration-ownership-and-status/problem:
+  en: 309504f35b462931
+  zh: 88c339610ef6f3ce
+/tool-registration-ownership-and-status/design:
+  en: 7bf3c3104e8ddd74
+  zh: b2c4e86a6962a789
+/tool-registration-ownership-and-status/data-and-lifecycle:
+  en: 8afdd94aef1679b3
+  zh: 6ef580e3adb0f35e
+/tool-registration-ownership-and-status/compatibility-and-privacy:
+  en: 9cb4c2073161e9e4
+  zh: 4e38e6b4329ef799
+/tool-registration-ownership-and-status/validation:
+  en: 58d2cf6b6f74c713
+  zh: 7c62636030278ae8
+/tool-registration-ownership-and-status/out-of-scope:
+  en: ddd95b016d6bfe9e
+  zh: e226fdbb8b65a62b
