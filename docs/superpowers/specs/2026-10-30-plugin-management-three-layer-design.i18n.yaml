@@ -1,0 +1,49 @@
+# Bilingual-pair consistency record for 2026-10-30-plugin-management-three-layer-design.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/specs/2026-10-30-plugin-management-three-layer-design.md
+/three-layer-plugin-management-and-health:
+  en: 8bc9f6e634d4c591
+  zh: e1babb1c06b244a1
+/three-layer-plugin-management-and-health/summary:
+  en: 96f92a4b12bcd328
+  zh: ab33a6ff162414e4
+/three-layer-plugin-management-and-health/table-of-contents:
+  en: d9d3252de8056c27
+  zh: 87f609929f78e71b
+/three-layer-plugin-management-and-health/problem:
+  en: 12fbf5a86631fe8c
+  zh: a5852f2b5b5b3336
+/three-layer-plugin-management-and-health/existing-capabilities:
+  en: d2359bb3dbea7d4f
+  zh: 3e969eac04a1da33
+/three-layer-plugin-management-and-health/architecture:
+  en: a7e56472b11bd3c8
+  zh: 6150d900a0920ce9
+/three-layer-plugin-management-and-health/architecture/layer-1-harness-core:
+  en: d109cfdb8ccae33c
+  zh: 506729d7fb97a5ae
+/three-layer-plugin-management-and-health/architecture/layer-2-management-api:
+  en: 3dc0a6ca0f79ee63
+  zh: 9bb1f5e2f495de9d
+/three-layer-plugin-management-and-health/architecture/layer-3-management-plugin:
+  en: dfafe71308d49001
+  zh: a879a5bd4ee6ef56
+/three-layer-plugin-management-and-health/management-api:
+  en: 0d2c286cbf1255ba
+  zh: 485a6e1f93a20ee0
+/three-layer-plugin-management-and-health/management-plugin:
+  en: 360d9f635d20d0a0
+  zh: 6c8f84fc19f6b670
+/three-layer-plugin-management-and-health/safety-and-privacy:
+  en: 4ee5be328a3d13f1
+  zh: 330a217892044d1f
+/three-layer-plugin-management-and-health/failure-behavior:
+  en: 3d84085db5e462a1
+  zh: 626c2eaef08651c7
+/three-layer-plugin-management-and-health/validation:
+  en: 4284f095042eee0b
+  zh: d33d03e6debb7663
+/three-layer-plugin-management-and-health/out-of-scope:
+  en: 30cb1a37022c05f0
+  zh: f9578e59cf30e288
