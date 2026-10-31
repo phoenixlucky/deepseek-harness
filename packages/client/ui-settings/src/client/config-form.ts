@@ -8,7 +8,7 @@ import type {
   SettingsNamespaceView, SettingsPathOpView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { JsonValue } from '@deepseek-ai/dsh-util-values'
+import { deepEqualJson, type JsonValue } from '@deepseek-ai/dsh-util-values'
 // Type-only, and deliberately NOT `@deepseek-ai/dsh-api-remotes/client`: this
 // package is reachable from the Host build graph through its feature-package
 // callers, and api-remotes' Client face imports a Host-tsdown-generated
@@ -91,7 +91,8 @@ export class ConfigFormController<T> implements ConfigForm<T> {
   }
 
   /**
-   * Observe snapshot replacements.
+   * Observe snapshot replacements; see {@link ConfigForm.subscribe} for what
+   * counts as a change.
    * @param listener - invoked after each snapshot change.
    * @returns the disposer removing this listener.
    */
@@ -178,6 +179,14 @@ export class ConfigFormController<T> implements ConfigForm<T> {
     return task
   }
 
+  /**
+   * Republish only when this namespace's snapshot actually moves. Every
+   * settings write re-reads the whole document, so publishing unconditionally
+   * would notify each form's listeners for another namespace's edit — and a
+   * listener that re-applies its own value would then overwrite whatever the
+   * edited namespace had just committed. Unchanged revision, layers, section,
+   * and writability keep the held snapshot and its reference in place.
+   */
   private derive(): void {
     if (this.disposed) return
     const mirrored = this.mirror.getSnapshot()
@@ -185,6 +194,8 @@ export class ConfigFormController<T> implements ConfigForm<T> {
     const { writable } = mirrored.view
     const view = mirrored.view.namespaces.find(candidate => candidate.ns === this.spec.namespace)
     if (view === undefined) {
+      const held = this.store.getSnapshot()
+      if (held.status === 'unavailable' && held.writable === writable) return
       this.store.update((draft) => {
         draft.status = 'unavailable'
         draft.writable = writable
@@ -192,6 +203,12 @@ export class ConfigFormController<T> implements ConfigForm<T> {
       return
     }
     const decoded = this.decode(view)
+    const held = this.store.getSnapshot()
+    const sameSection = held.revision === view.revision
+      && held.writable === writable
+      && deepEqualJson(held.base, view.base) && deepEqualJson(held.user, view.user)
+    if (sameSection
+      && (decoded === undefined || (held.status === 'ready' && deepEqualJson(held.value, decoded)))) return
     this.store.update((draft) => {
       draft.revision = view.revision
       draft.base = view.base

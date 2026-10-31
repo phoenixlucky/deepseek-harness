@@ -37,7 +37,10 @@ export interface ConfigForm<T> {
   /** @returns the current sync snapshot (stable reference until the next change). */
   getSnapshot(): ConfigFormSnapshot<T>
   /**
-   * Observe snapshot replacements.
+   * Observe snapshot replacements. A Host re-read that leaves this namespace's
+   * section, composition layers, revision, and writability unchanged publishes
+   * nothing, so one namespace's write never notifies another namespace's
+   * consumers.
    * @param listener - invoked after each snapshot change.
    * @returns the disposer removing this listener.
    */

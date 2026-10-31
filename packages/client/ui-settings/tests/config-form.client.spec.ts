@@ -138,6 +138,146 @@ describe('ConfigFormController', () => {
     expect(scope.getSnapshot()).toMatchObject({ status: 'ready', value: { preference: 'system' }, revision: 2 })
   })
 
+  it('publishes nothing when a re-read leaves the section, its layers, revision, and writability unchanged', async () => {
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(described({ preference: 'dark' }, 3))
+      .mockResolvedValueOnce(described({ preference: 'dark' }, 3))
+    const { mirror, scope } = derivedScope({ describe: describeCall })
+    await mirror.load()
+    const held = scope.getSnapshot()
+    const listener = vi.fn()
+    scope.subscribe(listener)
+
+    await mirror.load()
+
+    expect(listener).not.toHaveBeenCalled()
+    expect(scope.getSnapshot()).toBe(held)
+  })
+
+  it('leaves another namespace\'s form silent when one namespace writes', async () => {
+    const rows = (preferences: Record<string, string>): SettingsNamespaceView[] => Object.entries(preferences).map(
+      ([ns, preference]) => ({ ...view({ preference }, ns === 'ui-test' ? 4 : 2), ns }))
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(ok({ writable: true, hasDocument: true, namespaces: rows({ 'ui-test': 'system', other: 'system' }) }))
+      .mockResolvedValueOnce(ok({ writable: true, hasDocument: true, namespaces: rows({ 'ui-test': 'dark', other: 'system' }) }))
+    const mutate = vi.fn().mockResolvedValueOnce(ok({ ...view({ preference: 'dark' }, 4) }))
+    const ctx = ctxWith({ describe: describeCall, mutate })
+    const mirror = new SettingsDescribeMirror(ctx)
+    const written = new ConfigFormController<UiTestSettings>(ctx, { namespace: 'ui-test' }, mirror, settingsSchema)
+    const sibling = new ConfigFormController<UiTestSettings>(ctx, { namespace: 'other' }, mirror, settingsSchema)
+    await mirror.load()
+    const siblingListener = vi.fn()
+    const writtenListener = vi.fn()
+    sibling.subscribe(siblingListener)
+    written.subscribe(writtenListener)
+
+    await written.set('preference', 'dark')
+    // The write's invalidation re-reads the whole document; only the edited
+    // namespace moved.
+    await mirror.load()
+
+    expect(writtenListener).toHaveBeenCalled()
+    expect(siblingListener).not.toHaveBeenCalled()
+    expect(sibling.getSnapshot()).toMatchObject({ value: { preference: 'system' }, revision: 2 })
+  })
+
+  it('publishes a section that moves at the same revision', async () => {
+    const describedWith = (patch: Partial<SettingsNamespaceView>) => ok({
+      writable: true, hasDocument: true, namespaces: [{ ...view({ preference: 'dark' }, 3), ...patch }],
+    })
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(described({ preference: 'dark' }, 3))
+      .mockResolvedValueOnce(describedWith({ base: { preference: 'system' } }))
+      .mockResolvedValueOnce(describedWith({ base: { preference: 'system' }, user: { preference: 'dark' } }))
+      .mockResolvedValueOnce(describedWith({ base: { preference: 'system' }, user: { preference: 'dark' }, value: { preference: 'light' } }))
+    const { mirror, scope } = derivedScope({ describe: describeCall })
+    const listener = vi.fn()
+    scope.subscribe(listener)
+
+    await mirror.load()
+    await mirror.load()
+    await mirror.load()
+    await mirror.load()
+
+    expect(listener).toHaveBeenCalledTimes(4)
+    expect(scope.getSnapshot()).toMatchObject({
+      value: { preference: 'light' }, base: { preference: 'system' }, user: { preference: 'dark' },
+    })
+  })
+
+  it('publishes a writability change without a section change', async () => {
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(described({ preference: 'dark' }, 3))
+      .mockResolvedValueOnce(ok({ writable: false, hasDocument: true, namespaces: [view({ preference: 'dark' }, 3)] }))
+    const { mirror, scope } = derivedScope({ describe: describeCall })
+    await mirror.load()
+    const listener = vi.fn()
+    scope.subscribe(listener)
+
+    await mirror.load()
+
+    expect(listener).toHaveBeenCalledOnce()
+    expect(scope.getSnapshot()).toMatchObject({ value: { preference: 'dark' }, writable: false })
+  })
+
+  it('notifies once while a namespace stays unserved and again when writability moves', async () => {
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(described({ preference: 'dark' }, 1))
+      .mockResolvedValueOnce(ok({ writable: true, hasDocument: true, namespaces: [] }))
+      .mockResolvedValueOnce(ok({ writable: true, hasDocument: true, namespaces: [] }))
+      .mockResolvedValueOnce(ok({ writable: false, hasDocument: true, namespaces: [] }))
+    const { mirror, scope } = derivedScope({ describe: describeCall })
+    await mirror.load()
+    const listener = vi.fn()
+    scope.subscribe(listener)
+
+    await mirror.load()
+    await mirror.load()
+    await mirror.load()
+
+    expect(listener).toHaveBeenCalledTimes(2)
+    expect(scope.getSnapshot()).toMatchObject({ status: 'unavailable', writable: false })
+  })
+
+  it('publishes nothing for a section it already could not decode', async () => {
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(described({ preference: 'sepia' }, 2))
+      .mockResolvedValueOnce(described({ preference: 'sepia' }, 2))
+    const { mirror, scope } = derivedScope({ describe: describeCall }, {
+      namespace: 'ui-test',
+      decode: section => (section as UiTestSettings).preference === 'dark'
+        ? section as UiTestSettings
+        : undefined,
+    })
+    await mirror.load()
+    const held = scope.getSnapshot()
+    const listener = vi.fn()
+    scope.subscribe(listener)
+
+    await mirror.load()
+
+    expect(listener).not.toHaveBeenCalled()
+    expect(scope.getSnapshot()).toBe(held)
+  })
+
+  it('republishes a section that returns at the same revision after being unserved', async () => {
+    const describeCall = vi.fn()
+      .mockResolvedValueOnce(described({ preference: 'dark' }, 3))
+      .mockResolvedValueOnce(ok({ writable: true, hasDocument: true, namespaces: [] }))
+      .mockResolvedValueOnce(described({ preference: 'dark' }, 3))
+    const { mirror, scope } = derivedScope({ describe: describeCall })
+    await mirror.load()
+    await mirror.load()
+    expect(scope.getSnapshot().status).toBe('unavailable')
+    const listener = vi.fn()
+    scope.subscribe(listener)
+
+    await mirror.load()
+
+    expect(listener).toHaveBeenCalledOnce()
+    expect(scope.getSnapshot()).toMatchObject({ status: 'ready', value: { preference: 'dark' } })
+  })
+
   it('applies a custom decode override in place of the wire schema', async () => {
     const describeCall = vi.fn()
       .mockResolvedValueOnce(described({ preference: 'light' }, 1))
