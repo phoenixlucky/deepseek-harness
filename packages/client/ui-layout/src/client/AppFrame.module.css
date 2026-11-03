@@ -28,7 +28,7 @@
   --dsh-windows-content-radius: 16px;
   box-sizing: border-box;
   padding-top: var(--dsh-windows-titlebar-height);
-  background: var(--dsw-specific-sidebar-fill);
+  background: var(--dsw-specific-window-backdrop);
 }
 
 :global([data-windows-titlebar]) .centerCol {
@@ -42,7 +42,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: var(--dsh-windows-titlebar-height);
-  background: var(--dsw-specific-sidebar-fill);
+  background: var(--dsw-specific-window-backdrop);
   -webkit-app-region: drag;
 }
 
