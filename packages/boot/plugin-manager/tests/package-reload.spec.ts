@@ -130,6 +130,7 @@ export function apply(ctx) {
   const ctx = await boot('test', join(dir, 'cordis.yml'), readProfilePatches('test', profile), async (host) => {
     owner = host
     host.provide('profileContext', profile)
+    host.provide('tools', { registrations: () => [] } as never)
     host.provide('appReady', { onReady(listener) { listener(); return () => {} } })
     host.provide('packageReloadTrace', trace)
     host.loader.builtins.manager = PluginManager

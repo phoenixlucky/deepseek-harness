@@ -32,6 +32,7 @@ async function harness(baseUrl?: string): Promise<{
   contexts.push(ctx)
   if (baseUrl !== undefined) ctx.baseUrl = baseUrl
   await ctx.plugin(Loader)
+  ctx.provide('tools', { registrations: () => [] } as never)
   ctx.loader.builtins.active = activePlugin
   ctx.loader.builtins.pending = pendingPlugin
   await ctx.plugin(PluginInventoryGateway)
@@ -119,6 +120,7 @@ describe('PluginInventoryGateway', () => {
 
     expect(await inventory.list()).toEqual({
       entries: [],
+      toolRegistrations: [],
       agentPresets: [{
         id: 'local', isDefault: true,
         rows: [

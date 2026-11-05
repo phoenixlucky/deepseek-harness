@@ -68,6 +68,7 @@ async function fixture(config: Config = {}) {
   const ctx = await boot('test', join(dir, 'cordis.yml'), readProfilePatches('test', profile), (root) => {
     owner = root
     root.provide('profileContext', profile)
+    root.provide('tools', { registrations: () => [] } as never)
     Object.assign(root.loader.builtins, { manager: PluginManager, connection: RecordingConnection })
   })
   const registry = vi.spyOn(operations, 'readProfileRegistry').mockResolvedValue('https://registry.npmjs.org/')
