@@ -596,7 +596,7 @@ export class PluginManager extends TypertRemoteService {
     this.pruneRemediationPreviews()
     this.remediationPreviews.set(previewId, { preview, expiresAt: Date.now() + REMEDIATION_PREVIEW_MS })
     while (this.remediationPreviews.size > MAX_REMEDIATION_PREVIEWS) {
-      const oldest = this.remediationPreviews.keys().next().value as PluginRemediationPreviewId | undefined
+      const oldest = this.remediationPreviews.keys().next().value
       if (oldest === undefined) break
       this.remediationPreviews.delete(oldest)
     }
@@ -681,7 +681,6 @@ export class PluginManager extends TypertRemoteService {
         catch (error) { platformError = managementError(error) }
         const error = platformError ?? targetError ?? (enabled ? { code: 'not-bundle' as const } : undefined)
         bundles.push({ name, official, availability: 'missing', ...catalogMeta, ...target, enabled, installed, optional,
-          ...offered.listedByDefault === undefined ? {} : { listedByDefault: offered.listedByDefault },
           ...platformError?.code === 'unsupported-platform' ? { listedByDefault: false } : {},
           removable: enabled, rows: [], overrides: [],
           ...error === undefined ? {} : { error } })
