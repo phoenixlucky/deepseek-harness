@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-Use the **Built-in plugins** settings section to inspect the plugins this deployment ships. The section is a shell: it owns the navigation entry and the tab row, and every tab in it is registered by another plugin — the read-only inventory ships one. Configuring a built-in plugin happens on the sidebar's Plugins page, where each official plugin's own companion package registers its page.
+Use the **Built-in plugins** settings section to inspect plugins when another plugin contributes a tab. The section is a shell: it owns the navigation entry and the tab row, and every tab in it is registered by another plugin. Configuring a built-in plugin happens on the sidebar's Plugins page, where each official plugin's own companion package registers its page.
 
 ## Table of Contents
 
@@ -25,7 +25,7 @@ Use the **Built-in plugins** settings section to inspect the plugins this deploy
 <a id="use-this-package"></a>
 ## Use this package
 
-Open **Built-in plugins** in Settings. [ui-settings-plugin-inventory](../ui-settings-plugin-inventory/README.md) contributes the inventory as the section's one tab, shown as the page itself; a second registered tab turns the row into tabs. A deployment whose composition contributes no tab shows the section's empty line.
+Open **Built-in plugins** in Settings. Each registered tab appears in the section; a lone tab is shown as the page itself, and multiple tabs appear in a tab row. A deployment whose composition contributes no tab shows the section's empty line.
 
 To contribute a tab, register into `settings.plugins.tab` with an `id`, an `order`, and a localized `label`; the section renders the entries in order and mounts a tab on its first selection. Feature copy stays in the registering plugin's dictionary.
 
@@ -46,7 +46,7 @@ The section declares `settings.plugins.tab`, a root list slot whose labels becom
 <a id="further-exploration"></a>
 ## Further Exploration
 
-- [ui-settings-plugin-inventory](../ui-settings-plugin-inventory/README.md) — the read-only inventory tab.
+- [ui-settings-plugin-inventory](../ui-settings-plugin-inventory/README.md) — an optional read-only inventory tab.
 - [ui-settings](../ui-settings/README.md) — the domain base declaring `settings.section`.
 - [ui-plugin-manager](../ui-plugin-manager/README.md) — the Plugins page where official plugins are configured.
 - [ui-settings-shell](../ui-settings-shell/README.md), [ui-settings-agent-loop](../ui-settings-agent-loop/README.md), [ui-settings-subagent](../ui-settings-subagent/README.md), [ui-settings-web-search](../ui-settings-web-search/README.md) — the official configuration pages, one companion package each.

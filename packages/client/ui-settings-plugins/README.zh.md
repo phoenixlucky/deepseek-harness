@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-使用**内置插件**设置分区查看本部署随附的插件。该分区只是一个壳：它拥有导航项和标签行，里面的每个标签页都由其他插件注册——只读清单注册了一个。配置内置插件在侧栏的插件页上进行，每个官方插件自己的伴生包把页面注册到那里。
+当其他插件提供标签时，可在 Settings 的**内置插件**分区中查看。该分区只是一个壳：它拥有导航项和标签行，里面的每个标签页都由其他插件注册。配置内置插件在侧栏的插件页上进行，每个官方插件自己的伴生包把页面注册到那里。
 
 ## 目录
 
@@ -25,7 +25,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在设置里打开**内置插件**。[ui-settings-plugin-inventory](../ui-settings-plugin-inventory/README.zh.md) 把清单作为分区唯一的标签页贡献进来，直接显示为页面本身；注册第二个标签页后这一行就变成标签行。组合里没有任何标签页贡献的部署会显示分区的空提示。
+在设置里打开**内置插件**。注册的标签页会显示在此分区；只有一个标签页时直接显示页面，有多个标签页时显示标签行。组合里没有任何标签页贡献的部署会显示分区的空提示。
 
 要贡献一个标签页，带 `id`、`order` 和本地化的 `label` 注册进 `settings.plugins.tab`；分区按序渲染条目，标签页在首次被选中时挂载。功能文案留在注册方自己的字典里。
 
@@ -46,7 +46,7 @@ kind: "package-reference"
 <a id="further-exploration"></a>
 ## 进一步探索
 
-- [ui-settings-plugin-inventory](../ui-settings-plugin-inventory/README.zh.md)——只读清单标签页。
+- [ui-settings-plugin-inventory](../ui-settings-plugin-inventory/README.zh.md)——可选的只读清单标签页。
 - [ui-settings](../ui-settings/README.zh.md)——声明 `settings.section` 的领域基座。
 - [ui-plugin-manager](../ui-plugin-manager/README.zh.md)——配置官方插件的插件页。
 - [ui-settings-shell](../ui-settings-shell/README.zh.md)、[ui-settings-agent-loop](../ui-settings-agent-loop/README.zh.md)、[ui-settings-subagent](../ui-settings-subagent/README.zh.md)、[ui-settings-web-search](../ui-settings-web-search/README.zh.md)——官方配置页，每个一个伴生包。

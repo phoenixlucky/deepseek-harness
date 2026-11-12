@@ -341,11 +341,6 @@
     - id: ui-plugin-manager
       name: '@deepseek-ai/dsh-client-ui-plugin-manager'
 
-    # Read-only Plugin list tab in the Settings Plugins section; the built-in
-    # bundles the sidebar page leaves out are inspected here.
-    - id: ui-settings-plugin-inventory
-      name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
-
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'
 
@@ -468,10 +463,6 @@
     # are the companion rows below.
     - id: ui-settings-plugins
       name: '@deepseek-ai/dsh-client-ui-settings-plugins'
-
-    # MCP server drafts and export tools in the Settings navigation.
-    - id: ui-settings-mcp
-      name: '@deepseek-ai/dsh-client-ui-settings-mcp'
 
     # The official settings pages: one companion package per host-plane
     # namespace, each registering its page into the Plugins page while the

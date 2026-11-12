@@ -22,7 +22,7 @@ Adds an **MCP servers** section to Harness Settings. It edits Streamable HTTP an
 
 ## Use this package
 
-The web app composition mounts this page automatically. Open Settings and choose **MCP servers**. Import a managed `{ "servers": [...] }` export or an MCP `{ "mcpServers": { ... } }` config, then export the result for your profile. Sensitive values must be stored in the Harness credential store and referenced by name; they are not saved in page drafts.
+Mount this package in a Web composition to add **MCP servers** to Settings. Import a managed `{ "servers": [...] }` export or an MCP `{ "mcpServers": { ... } }` config, then export the result for your profile. Sensitive values must be stored in the Harness credential store and referenced by name; they are not saved in page drafts. The shipped Web composition does not mount this page.
 
 These browser drafts do not change the running Host configuration. Apply the exported Cordis patch to the profile and restart the Host to start the configured servers.
 
