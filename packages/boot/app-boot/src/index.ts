@@ -12,12 +12,11 @@ import { inspect, parseEnv } from 'node:util'
 import { captureStartupComposition, type StartupCompositionDiagnostic } from './startup-diagnostics.ts'
 export type { StartupCompositionDiagnostic, StartupPluginState, StartupServiceState } from './startup-diagnostics.ts'
 import { basename, dirname, isAbsolute, resolve } from 'node:path'
-import * as yaml from 'js-yaml'
 import { Context, type Fiber, type FiberState } from '@deepseek-ai/cordis'
 import Loader, { type Entry, type EntryGroup, type EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
-import Include, { applyEntryPatches, entryListSchema, type PatchOptions } from '@deepseek-ai/cordis-plugin-include'
+import Include, { applyEntryPatches, parseEntryYaml, stringifyEntryYaml, type PatchOptions } from '@deepseek-ai/cordis-plugin-include'
 import Group from '@deepseek-ai/cordis-plugin-group'
-import { dshHomePath, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { dshHomePath, dshPath, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { createLaunchEnvironmentSnapshot, type LaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment'
 export {
   describeConfigSources, readBundlePatches, readConfigSourceLayers, readProfilePatches, resolveTelemetryPatch,
@@ -47,6 +46,8 @@ declare module '@deepseek-ai/cordis' {
   interface Context {
     /** Harness-home path resolver available to Loader `!!js` config expressions. */
     dshHomePath?: typeof dshHomePath
+    /** Harness-home category path resolver available to Loader `!!js` config expressions. */
+    dshPath?: typeof dshPath
   }
 
   interface Events {
@@ -279,12 +280,7 @@ export function loadLayeredEnv(
   ])
 }
 
-// The include's YAML dialect (`!!js` scalars become expression nodes the
-// Loader interpolates against each entry's injection-ready context), imported
-// from the include itself so patch parsing and config dumping can never drift
-// from what the include mounts. User patch layers share it so they may
-// reference `process.env`.
-const userPatchesSchema = entryListSchema
+const bootstrapIncludes = new WeakMap<Context, Entry>()
 
 /** What a caller of {@link recomposeProfile} already did and requires. */
 export interface ProfileRecompositionOptions {
@@ -352,14 +348,8 @@ async function recompose(
   // The rows stopped first, which a failure before the generation applies puts back.
   let stopped: StoppedRow[] = []
   try {
-    let entry: Entry
-    try {
-      // Resolve the pinned root id from Loader so this works across module
-      // copies used by the launcher and profile plugins.
-      entry = ctx.loader.resolve('include')
-    } catch (cause) {
-      throw new Error(`${binName}: profile reload requires the root Include entry`, { cause })
-    }
+    const entry = bootstrapIncludes.get(ctx)
+    if (entry === undefined) throw new Error(`${binName}: profile reload requires the root Include entry`)
     // Reading the prior state imports nothing, so plugin code does not run before the next resolution publishes.
     const previousFailures = (await inactiveEntries(ctx, false)).map((failure): RecordedFailure => ({
       entry: failure.entry, fiber: failure.entry.fiber, options: JSON.stringify(failure.entry.options),
@@ -600,7 +590,7 @@ function parsePatchList(
 ): PatchOptions[] {
   let parsed: unknown
   try {
-    parsed = yaml.load(content, { schema: userPatchesSchema })
+    parsed = parseEntryYaml(content)
   } catch (error) {
     throw new Error(`${binName}: failed to parse ${label} ${file}: ${String(error)}`)
   }
@@ -669,7 +659,7 @@ export function renderConfigDump(
   }
   let parsed: unknown
   try {
-    parsed = yaml.load(content, { schema: entryListSchema })
+    parsed = parseEntryYaml(content)
   } catch (error) {
     throw new Error(`${binName}: failed to parse config ${absoluteConfigPath}: ${String(error)}`)
   }
@@ -730,7 +720,7 @@ function groupedDump(
   const flush = (): void => {
     if (currentLabel === undefined || group.length === 0) return
     lines.push(`# == ${currentLabel}`)
-    lines.push(yaml.dump(group, { schema: entryListSchema, noRefs: true }).trimEnd())
+    lines.push(stringifyEntryYaml(group).trimEnd())
     group = []
   }
   for (let index = 0; index < composed.length; index += 1) {
@@ -807,6 +797,7 @@ export async function mountRootInclude(
   const loader = ctx.get('loader')
   if (loader === undefined) return undefined
   const entry = loader.resolve(includeId)
+  bootstrapIncludes.set(ctx, entry)
   return entry
 }
 
@@ -1182,7 +1173,7 @@ export async function auditStartupEntries(
   warn: (line: string) => void = line => void process.stderr.write(line),
 ): Promise<void> {
   const failures = await inactiveEntries(ctx)
-  const required = new Set(failures.filter(({ entry }) => entry.options.id === 'include'
+  const required = new Set(failures.filter(({ entry }) => entry === bootstrapIncludes.get(ctx)
     || requiredStartupEntryIds.has(entry.options.id)).map(({ entry }) => entry))
   if (required.size > 0) {
     throw new StartupError(startupDiagnostic(binName, failures, required), failures.map(({ entry, outcome }) => ({
@@ -1247,6 +1238,7 @@ export async function boot(
   try {
     ctx.baseUrl = pathToFileURL(dirname(absoluteConfigPath)).href + '/'
     ctx.provide('dshHomePath', dshHomePath)
+    ctx.provide('dshPath', dshPath)
     await ctx.plugin(Loader)
     await prepare?.(ctx)
     stage = 'plugin tree failed to load'
