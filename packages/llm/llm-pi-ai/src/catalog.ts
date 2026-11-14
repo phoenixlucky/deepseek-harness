@@ -847,6 +847,30 @@ export interface RouteCatalog {
 }
 
 /**
+ * Current OpenCode Go URLs include the API family before its version path.
+ * The installed pi-ai catalog predates that routing change, so correct only
+ * its default URL. A route-level `baseURL` remains the complete caller-owned
+ * API root and bypasses this mapping.
+ * @param provider - configured provider route.
+ * @param api - resolved wire protocol.
+ * @param baseUrl - installed catalog model URL.
+ * @returns the URL root expected by the resolved protocol.
+ */
+function catalogBaseUrl(provider: string, api: string, baseUrl: string | undefined): string | undefined {
+  if (baseUrl === undefined || provider !== 'opencode-go'
+    || !baseUrl.startsWith('https://opencode.ai/inference/go')) return baseUrl
+  const suffix = api === 'openai-completions' || api === 'openai-responses'
+    ? '/openai/v1'
+    : api === 'anthropic-messages'
+      ? '/anthropic'
+      : undefined
+  if (suffix === undefined) return baseUrl
+  const root = baseUrl.replace(/\/(?:openai\/v1|anthropic(?:\/v1)?|v1)\/$/, '')
+    .replace(/\/(?:openai\/v1|anthropic(?:\/v1)?|v1)$/, '')
+  return `${root}${suffix}`
+}
+
+/**
  * Materialize one route's catalog by merging the installed catalog defaults
  * under the configured entries. A route with no configured `models` serves the
  * installed catalog unchanged, which is what keeps an existing
@@ -920,7 +944,7 @@ export function resolveRouteModels(
       invalid(provider, `model "${entry.id}" needs an api; the installed catalog does not describe it, so set the`
         + ' route\'s api to the wire protocol its endpoint speaks')
     }
-    const baseUrl = request.baseURL ?? base?.baseUrl ?? providerBaseUrl
+    const baseUrl = request.baseURL ?? catalogBaseUrl(provider, api, base?.baseUrl) ?? providerBaseUrl
     if (baseUrl === undefined) {
       invalid(provider, `model "${entry.id}" needs a baseURL; the installed catalog does not describe this route`)
     }

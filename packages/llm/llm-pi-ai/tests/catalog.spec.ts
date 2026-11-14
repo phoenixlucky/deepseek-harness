@@ -610,6 +610,24 @@ describe('catalog routes with per-model configuration', () => {
     expect(resolved.get('opencode')?.piProvider?.baseUrl).toBeUndefined()
   })
 
+  it.each([
+    ['openai-completions', 'https://opencode.ai/inference/go/openai/v1'],
+    ['openai-responses', 'https://opencode.ai/inference/go/openai/v1'],
+    ['anthropic-messages', 'https://opencode.ai/inference/go/anthropic'],
+  ] as const)('uses OpenCode Go’s %s endpoint family', (api, baseURL) => {
+    const models = resolveProfiles({ 'opencode-go': { api } }).get('opencode-go')?.piProvider?.getModels() ?? []
+    expect(models.length).toBeGreaterThan(0)
+    expect(models.every(model => model.baseUrl === baseURL)).toBe(true)
+  })
+
+  it('leaves a configured OpenCode Go baseURL unchanged', () => {
+    const baseURL = 'https://gateway.example/custom/root/'
+    const models = resolveProfiles({ 'opencode-go': { api: 'openai-completions', baseURL } })
+      .get('opencode-go')?.piProvider?.getModels() ?? []
+    expect(models.length).toBeGreaterThan(0)
+    expect(models.every(model => model.baseUrl === baseURL)).toBe(true)
+  })
+
   it('repoints a catalog route at another wire protocol without restating its endpoint', () => {
     const resolved = resolveProfiles({ openai: { api: 'openai-completions' } })
     const models = resolved.get('openai')?.piProvider?.getModels() ?? []

@@ -37,6 +37,8 @@ kind: "package-reference"
 
 每个 profile 都可以设置 `retryPolicy`；省略时使用 normal mode、最多重试五次。`apiKeyEnv` 是按请求经 harness 凭据 seam 解析的凭据引用，因此配置文件绝不包含密钥；解析为空的引用会让请求以 `MISSING_CREDENTIAL` 失败。省略它会让路由保持已配置但无密钥（configured-but-keyless）状态，对已安装目录路由而言即交由 pi-ai 提供方原生的环境发现。
 
+OpenCode Go 目录路由会按模型所用 API 协议生成对应的路径。例如，OpenAI 兼容模型使用 `https://opencode.ai/inference/go/openai/v1`；profile 中设置的 `baseURL` 会原样替代此默认值。
+
 ```yaml
 - name: '@deepseek-ai/dsh-llm-pi-ai'
   config:
