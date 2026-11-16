@@ -23,7 +23,7 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-Web 应用组合会自动挂载此页面。打开「设置」并选择「MCP 服务器」。可导入 `{ "servers": [...] }` 管理配置或 `{ "mcpServers": { ... } }` MCP 配置，再导出供配置文件使用。敏感值应保存在 Harness 凭据存储中并按名称引用；页面草稿不会保存密钥明文。
+在 Web 组合中挂载此包后，Settings 会出现「MCP 服务器」。可导入 `{ "servers": [...] }` 管理配置或 `{ "mcpServers": { ... } }` MCP 配置，再导出供配置文件使用。敏感值应保存在 Harness 凭据存储中并按名称引用；页面草稿不会保存密钥明文。随附的 Web 组合不再挂载此页面。
 
 浏览器草稿不会更改正在运行的 Host 配置。将 Cordis 补丁应用到配置文件并重启 Host 后，配置的服务才会启动。
 
