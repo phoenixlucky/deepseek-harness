@@ -153,14 +153,14 @@ describe('assertEntriesActive', () => {
 
   /** Loader-shaped double: entries with scripted fiber states, services by name. */
   function auditCtx(entries: readonly FakeEntry[], services: Record<string, unknown> = {}): Context {
-    return {
+    return Object.assign(new Context(), {
       loader: {
         * entries() {
           for (const entry of entries) yield { options: { name: entry.name }, fiber: entry.fiber }
         },
       },
       get: (name: string) => services[name],
-    } as unknown as Context
+    })
   }
 
   const silent = { importError: () => undefined }
