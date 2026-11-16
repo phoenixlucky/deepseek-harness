@@ -66,7 +66,7 @@ describe('buildPluginFindings', () => {
     const bundles: BundleInfo[] = [
       {
         name: 'incompatible', official: false, availability: 'profile', enabled: true, installed: true,
-        optional: false, removable: true, updatable: false,
+        optional: false, removable: true,
         error: { code: 'incompatible-version', diagnostic: 'C:\\private\\path', incompatible: [
           { name: 'incompatible', version: '1.0.0', runtimeVersion: '2.0.0', requirements: { 'engines.dsh': '^3' } },
         ] },
@@ -74,7 +74,7 @@ describe('buildPluginFindings', () => {
       },
       {
         name: 'dependency-only', official: false, availability: 'profile', enabled: true, installed: true,
-        optional: false, removable: true, updatable: false, error: { code: 'not-bundle' }, rows: [], overrides: [],
+        optional: false, removable: true, error: { code: 'not-bundle' }, rows: [], overrides: [],
       },
     ]
     const findings = buildPluginFindings([], { entries: [] }, bundles)
