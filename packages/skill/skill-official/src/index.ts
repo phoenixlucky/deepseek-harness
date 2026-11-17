@@ -10,6 +10,7 @@ import z from '@deepseek-ai/schemastery'
 import { parse as parseYaml } from 'yaml'
 import { BUNDLED_SKILL_RANK, isSkillName } from '@deepseek-ai/dsh-skill'
 import type { SkillCandidate, SkillProvider, SkillSource } from '@deepseek-ai/dsh-skill'
+import { validateSkillUpdateContent } from './updates.ts'
 
 const PROVIDER = 'dsh-official'
 const DEFAULT_DISABLED: string[] = []
@@ -26,12 +27,15 @@ export interface Config {
   assetRoot?: string
   /** Disabled built-ins; provider metadata remains available for Settings search. */
   disabledSkills: Volatile<readonly string[]>
+  /** User-installed Figma Markdown after fixed-source validation. */
+  updatedSkills?: Volatile<Readonly<Record<string, string>>>
 }
 
 /** Schema for relocatable assets and user-controlled skill enablement. */
 export const ConfigSchema = z.object({
   assetRoot: z.string().min(1).default(DEFAULT_ASSET_ROOT),
   disabledSkills: z.array(z.string()).default(DEFAULT_DISABLED).volatile(),
+  updatedSkills: z.dict(z.string()).default({}).volatile(),
 })
 
 export const name = 'skill-official'
@@ -44,7 +48,7 @@ function parseSkill(raw: string, path: string): Parsed {
   if (match?.[1] === undefined) throw new Error(`skill-official: ${path} has no YAML frontmatter`)
   let header: unknown
   try {
-    header = parseYaml(match[1]) as unknown
+    header = parseYaml(match[1])
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     throw new Error(`skill-official: ${path} has invalid YAML frontmatter: ${reason}`, { cause: error })
@@ -74,7 +78,7 @@ function readSkill(path: string): string {
  */
 export function apply(
   ctx: Context,
-  config: Config = { disabledSkills: { get: () => DEFAULT_DISABLED } },
+  config: Config = { disabledSkills: { get: () => DEFAULT_DISABLED }, updatedSkills: { get: () => ({}) } },
 ): void {
   const root = config.assetRoot ?? DEFAULT_ASSET_ROOT
   if (!isAbsolute(root)) throw new Error('skill-official: assetRoot must be absolute')
@@ -91,9 +95,11 @@ export function apply(
     list: () => Promise.resolve((() => {
       const disabled = new Set(config.disabledSkills.get())
       return entries.filter(entry => !disabled.has(entry.skill.name)).map(({ directory, path, skill: bundled }) => {
+        const override = config.updatedSkills?.get()[bundled.name]
+        const skill = override === undefined ? bundled : parseSkill(validateSkillUpdateContent(bundled.name, override).content, path)
         return {
-          name: bundled.name,
-          description: bundled.description,
+          name: skill.name,
+          description: skill.description,
           invocation: { modelInvocable: true, userInvocable: true },
           provider: PROVIDER,
           source: 'bundled' satisfies SkillSource,
@@ -109,7 +115,11 @@ export function apply(
       const entry = byName.get(candidate.name)
       if (entry === undefined || candidate.provider !== PROVIDER) return Promise.resolve(undefined)
       const { rank: _rank, locator: _locator, ...summary } = candidate
-      return Promise.resolve({ ...summary, content: entry.skill.content })
+      const override = config.updatedSkills?.get()[candidate.name]
+      const content = override === undefined
+        ? entry.skill.content
+        : parseSkill(validateSkillUpdateContent(candidate.name, override).content, entry.path).content
+      return Promise.resolve({ ...summary, content })
     },
   }
   ctx.skills.registerProvider((control) => {
