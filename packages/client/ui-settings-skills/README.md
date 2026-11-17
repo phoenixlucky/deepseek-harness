@@ -60,7 +60,7 @@ The skill list and fixed-source validation are owned by [skill-official](../../s
 <a id="model-experience"></a>
 ## Model Experience
 
-None; this package registers a browser Settings tab and adds no model-visible content.
+None, as this package registers a browser Settings tab and adds no model-visible content.
 
 #### KV Cache effect
 

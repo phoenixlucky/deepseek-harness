@@ -98,6 +98,8 @@ Standard and Creator include the `dsh-doc` skill for questions about DSH and req
 
 The packaged skill uses the custom skill root: a same-named project skill overrides it, and it overrides same-named user skills. One catalog entry wins without an error; see [skill-root priority](../../skill/skill-filesystem/README.md).
 
+The skill-capable Web presets list the thirteen restored WJ Forge skills and the Figma design skill from the [official provider](../../skill/skill-official/README.md). Open **Plugins** → **Official skills** in Settings to search and enable them; only Figma has a fixed-source update control.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -109,6 +111,8 @@ The packaged skill uses the custom skill root: a same-named project skill overri
 The bundle is one patch layer of five files plus one runtime glue plugin: `cordis.patch.yml` carries the host rows and the preset registry, and each `presets/<id>.patch.yml` inserts one shipped preset declaration, applied in the order `dsh.bundle.patch` lists them. The storage stack and projection cache come from `dsh-base`; the web overlay's workspace and message-feedback rows consume that shared `storageDomain` service. The patch restates the surface-specific values the base deliberately omits, inserts the web-only host rows and browser roster, then moves the agent plane behind presets. The glue plugin owns dist serving, the advertised application URL, the plain-HTTP exposure warning, the bash variable, and the readiness announcements. The `office-kit` row mounts one lazy [Office conversion provider](../../document/office-kit/README.md) for Host consumers, including Desktop compositions using this bundle, and keeps converted files under `$DSH_HOME/office-kit/outputs`. The `standard` and `ptc` presets mount the [Office tools](../../document/tool-office/README.md) in every profile, whether or not Kit is installed, and declare them after an Office skill loads; the `minimal` preset omits them. The conversion service's Remote methods authorize preview reads, while Document Preview owns the Office viewer and Client cache.
 
 The `skill-office` row mounts the [Office skills](../../skill/skill-office/README.md) from their packaged assets in every profile. Desktop with a nonempty `DSH_PRIMARY_RUNTIME` also mounts the bundled dependency-query row and selects `pythonEnvironment: 'workspace-dependencies'`; other profiles, and Desktop without a primary runtime, select `pythonEnvironment: 'user'` and leave the dependency-query row disabled. The [Desktop application](../../../apps/desktop/README.md#bundled-workspace-dependencies) owns resource packaging.
+
+The `official-skills` Host row registers the restored official catalog globally; the Settings client row appears while that configuration is served. The `standard`, `ptc`, and `cordis` presets already mount the model-facing `skill` tool, so they can discover and load those entries. The `minimal` preset remains without that tool.
 
 ### Patch semantics
 
@@ -211,6 +215,20 @@ The four catalog summaries in each initial catalog; loaded skill bodies only whe
 #### KV Cache effect
 
 While resources and configuration stay unchanged, the built-in Office summaries and Python environment sections stay stable; the [Office skills](../../skill/skill-office/README.md#model-experience) describe when the catalog changes.
+
+### Official skills
+
+#### What the model sees
+
+Skill-capable presets can discover the thirteen restored WJ Forge skills and `figma-design-skill` through the `skill` tool. Their summaries appear in the session catalog; the full instructions enter context only when a skill is loaded.
+
+#### Token effect
+
+Fourteen skill summaries in each initial catalog; loaded skill bodies enter context only when requested.
+
+#### KV Cache effect
+
+The catalog stays stable while the provider configuration is unchanged. The [official provider](../../skill/skill-official/README.md#model-experience) owns the bundled instructions and Figma update behavior.
 
 ## Known Limitations and Deferred Work
 

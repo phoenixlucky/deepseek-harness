@@ -109,12 +109,16 @@ export class OfficialSkillsSettingsController {
     this.store = this.form.bind(() => this.project())
   }
 
-  /** @returns the current Settings snapshot. */
+  /** Returns the current Settings snapshot.
+   * @returns the current snapshot.
+   */
   state(): OfficialSkillsState {
     return this.store.getSnapshot()
   }
 
-  /** @returns the values and callbacks bound to the Settings tab. */
+  /** Returns the values and callbacks bound to the Settings tab.
+   * @returns the Settings tab face.
+   */
   inject(): OfficialSkillsFace {
     return {
       hooks: { skillsSettings: this.store },

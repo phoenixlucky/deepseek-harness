@@ -90,6 +90,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
 
   'packages/credentials/deepseek-account': { kind: 'none', reason: 'Account authorization registers no model context or tools; credentials affect HTTP authentication only.' },
   'packages/client/ui-settings-account': { kind: 'none', reason: 'Account authorization registers no model context or tools; credentials affect HTTP authentication only.' },
+  'packages/client/ui-settings-skills': { kind: 'none', reason: 'Browser-side official skills settings manage Host configuration without registering model context or tools.' },
   'packages/client/ui-account-notifications': { kind: 'none', reason: 'Account notification presentation and polling add no model input or Session events.' },
 
   'packages/attachment/attachment': { kind: 'indirect', reason: 'The storage seam delegates model request rendering to provider adapters.' },

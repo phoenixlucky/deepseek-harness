@@ -39,9 +39,6 @@
     "watch": "tsdown --watch"
   },
   "license": "MIT",
-  "dependencies": {
-    "yaml": "^2.4.2"
-  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:~"
   },
@@ -55,7 +52,8 @@
     "@deepseek-ai/dsh-client-ui-settings": "workspace:*",
     "@deepseek-ai/dsh-client-ui-slots": "workspace:*",
     "@deepseek-ai/dsh-skill-official": "workspace:*",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "yaml": "^2.4.2"
   },
   "files": [
     "lib/index.js",

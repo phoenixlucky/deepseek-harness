@@ -464,6 +464,7 @@
     { "path": "./packages/skill/skill" },
     { "path": "./packages/experimental/skill-badge" },
     { "path": "./packages/skill/skill-filesystem" },
+    { "path": "./packages/skill/skill-official" },
     { "path": "./packages/skill/tool-skill" },
     { "path": "./packages/interaction/tool-ask-user" },
     { "path": "./packages/context/agent-instructions" },

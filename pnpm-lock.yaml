@@ -3109,6 +3109,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-settings-shell':
         specifier: workspace:*
         version: link:../../client/ui-settings-shell
+      '@deepseek-ai/dsh-client-ui-settings-skills':
+        specifier: workspace:*
+        version: link:../../client/ui-settings-skills
       '@deepseek-ai/dsh-client-ui-settings-subagent':
         specifier: workspace:*
         version: link:../../client/ui-settings-subagent
@@ -3265,6 +3268,9 @@ importers:
       '@deepseek-ai/dsh-skill-office':
         specifier: workspace:*
         version: link:../../skill/skill-office
+      '@deepseek-ai/dsh-skill-official':
+        specifier: workspace:*
+        version: link:../../skill/skill-official
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:*
         version: link:../../subprocess/subprocess
@@ -6145,10 +6151,6 @@ importers:
         version: 18.3.1
 
   packages/client/ui-settings-skills:
-    dependencies:
-      yaml:
-        specifier: ^2.4.2
-        version: 2.9.0
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -6180,6 +6182,9 @@ importers:
       react:
         specifier: ^18.2.0
         version: 18.3.1
+      yaml:
+        specifier: ^2.4.2
+        version: 2.9.0
 
   packages/client/ui-settings-subagent:
     devDependencies:
@@ -16186,6 +16191,12 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:~
         version: link:../../../vendor/cordis
+      '@deepseek-ai/cordis-plugin-loader':
+        specifier: workspace:~
+        version: link:../../../vendor/loader
+      '@deepseek-ai/dsh-app-boot':
+        specifier: workspace:*
+        version: link:../../boot/app-boot
       '@deepseek-ai/dsh-settings':
         specifier: workspace:*
         version: link:../../settings/settings

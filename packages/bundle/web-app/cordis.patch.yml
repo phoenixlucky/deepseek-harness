@@ -310,6 +310,9 @@
       config:
         pythonEnvironment: !!js "ctx.get('profileContext')?.name === 'desktop' && process.env.DSH_PRIMARY_RUNTIME ? 'workspace-dependencies' : 'user'"
 
+    - id: official-skills
+      name: '@deepseek-ai/dsh-skill-official'
+
     # The right Sidebar's document tab: bounded file reads with selectable
     # Markdown, code, HTML, PDF, Office, and plain-text renderers.
     - id: ui-sidebar-documentpreview
@@ -478,6 +481,9 @@
 
     - id: ui-settings-web-search
       name: '@deepseek-ai/dsh-client-ui-settings-web-search'
+
+    - id: ui-settings-skills
+      name: '@deepseek-ai/dsh-client-ui-settings-skills'
 
     # Plan control: the composer plan seat over the plan projection + /plan channel.
     - id: ui-plan

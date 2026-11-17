@@ -98,6 +98,8 @@ dsh --profile web --no-open --host "$(hostname -i | awk '{print $1}')" --public-
 
 打包的 skill 使用自定义 skill 根目录：同名的项目 skill 会覆盖打包的 skill，打包的 skill 又会覆盖同名的用户 skill。skill 目录中只保留优先级最高的一个条目，不会报错；参见 [skill 根目录优先级](../../skill/skill-filesystem/README.zh.md)。
 
+支持 skill 的 Web preset 会列出 [官方提供方](../../skill/skill-official/README.zh.md)中的十三个 WJ Forge 技能和 Figma 设计技能。打开设置的**插件** → **官方技能**可搜索并启用；只有 Figma 提供固定来源的更新操作。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -109,6 +111,8 @@ dsh --profile web --no-open --host "$(hostname -i | awk '{print $1}')" --public-
 此 bundle 由一层五个文件的补丁和一个运行时胶水插件组成：`cordis.patch.yml` 承载宿主行和 preset 注册表，每个 `presets/<id>.patch.yml` 插入一条随发行版交付的 preset 声明，按 `dsh.bundle.patch` 列出的顺序应用。存储栈与投影缓存来自 `dsh-base`；Web 叠加层的工作区和消息反馈条目消费共享的 `storageDomain` 服务。补丁重述 base 有意省略的界面专用值，插入 Web 专用宿主条目和浏览器插件列表，再将 Agent 层移到预设后面。胶水插件负责 dist 服务、公告应用 URL、明文 HTTP 暴露警告、bash 变量和就绪通知。`office-kit` 条目为宿主消费者挂载一个延迟创建引擎的 [Office 转换提供方](../../document/office-kit/README.zh.md)，使用此 bundle 的 Desktop 组合也共享该提供方，转换后的文件保存在 `$DSH_HOME/office-kit/outputs`。`standard` 和 `ptc` 预设在所有 profile 中挂载 [Office 工具](../../document/tool-office/README.zh.md)，无论是否安装 Kit，并在加载 Office 技能后声明它们；`minimal` 预设不挂载它们。转换服务的 Remote 方法负责预览读取授权，Document Preview 负责 Office 查看器和客户端缓存。
 
 `skill-office` 行在所有 profile 中从包内 assets 挂载 [Office 技能](../../skill/skill-office/README.zh.md)。`DSH_PRIMARY_RUNTIME` 非空的 Desktop 还挂载内置依赖查询行，并选择 `pythonEnvironment: 'workspace-dependencies'`；其他 profile 以及没有主运行时的 Desktop 选择 `pythonEnvironment: 'user'`，并禁用依赖查询行。资源打包由 [Desktop 应用](../../../apps/desktop/README.zh.md#bundled-workspace-dependencies)负责。
+
+`official-skills` Host 行在全局注册恢复的官方目录；该配置被服务时，设置客户端行才会显示。`standard`、`ptc` 和 `cordis` preset 已挂载面向模型的 `skill` 工具，因此可以发现并加载目录项。`minimal` preset 仍不包含该工具。
 
 ### patch 语义
 
@@ -211,6 +215,20 @@ preset 提供一条目录项。没有其他 skill 的会话还会收到目录的
 #### KV Cache 影响
 
 资源和配置不变时，内置 Office 摘要和各 Python 环境说明保持稳定；目录何时变化见 [Office 技能](../../skill/skill-office/README.zh.md#model-experience)。
+
+### 官方技能
+
+#### 模型看到什么
+
+支持 skill 的 preset 可以通过 `skill` 工具发现恢复的十三个 WJ Forge 技能和 `figma-design-skill`。摘要会出现在会话目录中；只有加载技能时，完整指令才会进入上下文。
+
+#### Token 影响
+
+每个初始目录包含十四条技能摘要；只有在请求时，已加载的技能正文才会进入上下文。
+
+#### KV Cache 影响
+
+提供方配置不变时，目录保持稳定。[官方提供方](../../skill/skill-official/README.zh.md#model-experience)负责内置指令与 Figma 更新行为。
 
 ## 已知限制与延期工作
 

@@ -3550,6 +3550,28 @@ export type PythonEnvironment = 'workspace-dependencies' | 'user'
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-skill-office -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-skill-official -->
+<a id="deepseek-aidsh-skill-official"></a>
+
+## `@deepseek-ai/dsh-skill-official`
+
+- `inject`: `skills`
+- `refs`: `Volatile` (`@deepseek-ai/cordis`)
+- `source`: [`packages/skill/skill-official/src/index.ts:25`](../packages/skill/skill-official/src/index.ts)
+
+```ts config-catalog
+/** Runtime configuration, including live enablement edited in Settings. */
+export interface Config {
+  /** Absolute asset root used by relocated app packages. */
+  assetRoot?: string
+  /** Disabled built-ins; provider metadata remains available for Settings search. */
+  disabledSkills: Volatile<readonly string[]>
+  /** User-installed Figma Markdown after fixed-source validation. */
+  updatedSkills?: Volatile<Readonly<Record<string, string>>>
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-skill-official -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-spill-local -->
 <a id="deepseek-aidsh-spill-local"></a>
 
@@ -5131,6 +5153,7 @@ export interface Config {
 | `@deepseek-ai/dsh-client-ui-settings-plugins` | — | [`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-session-log` | — | [`packages/client/ui-settings-session-log/src/index.ts`](../packages/client/ui-settings-session-log/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-shell` | — | [`packages/client/ui-settings-shell/src/index.ts`](../packages/client/ui-settings-shell/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-settings-skills` | — | [`packages/client/ui-settings-skills/src/index.ts`](../packages/client/ui-settings-skills/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-subagent` | — | [`packages/client/ui-settings-subagent/src/index.ts`](../packages/client/ui-settings-subagent/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-settings-web-search` | — | [`packages/client/ui-settings-web-search/src/index.ts`](../packages/client/ui-settings-web-search/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-shortcuts` | — | [`packages/client/ui-shortcuts/src/index.ts`](../packages/client/ui-shortcuts/src/index.ts) |
