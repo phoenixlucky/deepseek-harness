@@ -1,0 +1,25 @@
+# Bilingual-pair consistency record for 2026-11-17-official-skill-restoration.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/plans/2026-11-17-official-skill-restoration.md
+/official-skill-provider-restoration-implementation-plan:
+  en: 4592f4435edb38bf
+  zh: 04ac0c8c3cd34a78
+/official-skill-provider-restoration-implementation-plan/global-constraints:
+  en: 042493fe572602b1
+  zh: 71d0862f0fce798e
+/official-skill-provider-restoration-implementation-plan/review-focus:
+  en: 203bb76d23a046b9
+  zh: c4103c4625470b9d
+/official-skill-provider-restoration-implementation-plan/review-focus/task-1-restore-the-official-provider-and-skill-assets:
+  en: c580410348240919
+  zh: 356e206df41dbec1
+/official-skill-provider-restoration-implementation-plan/review-focus/task-2-validate-fixed-source-figma-updates:
+  en: 2a98c9a5ec30b04a
+  zh: ca183ba410beb90b
+/official-skill-provider-restoration-implementation-plan/review-focus/task-3-add-the-official-skills-settings-tab:
+  en: 4319c4367b753b37
+  zh: 3472820a0032d252
+/official-skill-provider-restoration-implementation-plan/review-focus/task-4-wire-the-web-composition-and-verify-the-real-entry-path:
+  en: 16b275c98a92486b
+  zh: 4cfc56305d44ed88
