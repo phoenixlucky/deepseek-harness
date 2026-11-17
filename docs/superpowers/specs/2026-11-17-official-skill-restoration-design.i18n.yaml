@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for 2026-11-17-official-skill-restoration-design.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write docs/superpowers/specs/2026-11-17-official-skill-restoration-design.md
+/official-skill-provider-restoration:
+  en: 671b35d03be44617
+  zh: d1591ab0d6a4cc6f
+/official-skill-provider-restoration/summary:
+  en: f52e98c01dc923e6
+  zh: 0da06717c586dc95
+/official-skill-provider-restoration/table-of-contents:
+  en: 2f58689dc0ac1743
+  zh: 99ee78b178123fa2
+/official-skill-provider-restoration/problem:
+  en: a45a7b94f088c6f5
+  zh: b960c8a7fc5fbc25
+/official-skill-provider-restoration/existing-capabilities:
+  en: 6ddba73153d75883
+  zh: 1be7dbd37be1e7d2
+/official-skill-provider-restoration/restored-skills:
+  en: c4727b1fd1f7a55f
+  zh: ba670f11edc45a6d
+/official-skill-provider-restoration/architecture:
+  en: de25f8d61bf79eea
+  zh: 66fd9841cc515fcc
+/official-skill-provider-restoration/settings-and-updates:
+  en: abec087a84289f41
+  zh: be0e0ce1f6f2627e
+/official-skill-provider-restoration/failure-behavior:
+  en: 28bcfd0e5c4114fd
+  zh: e493cc98e97720dc
+/official-skill-provider-restoration/validation:
+  en: 951d491f9d65b348
+  zh: 3670c4848c198f92
+/official-skill-provider-restoration/out-of-scope:
+  en: c20ce9a955966d7a
+  zh: b58a4dc24b88d40c
