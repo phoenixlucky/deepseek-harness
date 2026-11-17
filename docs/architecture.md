@@ -28,7 +28,7 @@ YAML controls HMR: base enables config-only `dsh-hmr`; headless, SDK and ACP dis
 
 Base includes [Plugin Manager](../packages/boot/plugin-manager/README.md) for Web and agents.
 
-Plugin management has three owners: Harness Core owns profile composition and Loader; `pluginManager` reports health and handles bounded repairs; `dsh-plugin-manager-wj` renders diagnostics.
+Plugin management has three owners: Harness Core owns profile composition and Loader; `pluginManager` reports health and bounds repairs; `dsh-plugin-manager-wj` renders diagnostics.
 
 To see the tree your machine boots:
 

@@ -50,5 +50,7 @@ export const PRODUCT_PACKAGE_POLICY: Readonly<Record<string, ProductPackagePolic
   'packages/test-support/session-snapshot': { category: 'test', reason: 'Published Session snapshot replay harness.' },
   'packages/client/web': { category: 'web-distribution', reason: 'Browser boot kernel bundled into the Web distribution.' },
   'packages/client/ui-dockkit': { category: 'web-distribution', reason: 'Layout library bundled into the Web distribution.' },
+  'packages/client/ui-settings-mcp': { category: 'optional', reason: 'Settings page mounted only by custom Web compositions that edit MCP profile configuration.' },
+  'packages/client/ui-settings-plugin-inventory': { category: 'optional', reason: 'Read-only plugin inventory page available to custom Web compositions.' },
   'packages/util/package-manifest': { category: 'declarations', reason: 'Shared package metadata declarations have no runtime mount.' },
 }

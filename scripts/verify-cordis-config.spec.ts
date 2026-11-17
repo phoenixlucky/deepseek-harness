@@ -4,6 +4,7 @@
  * metadata field must stay static, and a disabled expression must parse.
  */
 
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -15,9 +16,29 @@ import {
   metadataExpressionErrors,
   packageTestFixtureDependencyErrors,
   packageTestPluginDependencyErrors,
+  readCordisConfigText,
 } from './verify-cordis-config.ts'
 
 describe('verify-cordis-config metadata expressions', () => {
+  it('reads a Git symlink target when the checkout stores it as text', () => {
+    const fixture = mkdtempSync(join(tmpdir(), 'dsh-cordis-config-link-'))
+    try {
+      execFileSync('git', ['init', '--quiet'], { cwd: fixture })
+      mkdirSync(join(fixture, 'profiles'), { recursive: true })
+      writeFileSync(join(fixture, 'profiles/config.cordis.yml'), '../shared/config.yml')
+      mkdirSync(join(fixture, 'shared'), { recursive: true })
+      writeFileSync(join(fixture, 'shared/config.yml'), '- name: example\n')
+      const blob = execFileSync('git', ['hash-object', '-w', '--stdin'], {
+        cwd: fixture, input: '../shared/config.yml', encoding: 'utf8',
+      }).trim()
+      execFileSync('git', ['update-index', '--add', '--cacheinfo', `120000,${blob},profiles/config.cordis.yml`], { cwd: fixture })
+
+      expect(readCordisConfigText(fixture, 'profiles/config.cordis.yml')).toBe('- name: example\n')
+    } finally {
+      rmSync(fixture, { recursive: true, force: true })
+    }
+  })
+
   it('accepts a disabled !!js expression', () => {
     const problems = metadataExpressionErrors(
       { id: 'tool-bash', name: '@deepseek-ai/dsh-tool-bash', disabled: { __jsExpr: "process.platform === 'win32'" } },

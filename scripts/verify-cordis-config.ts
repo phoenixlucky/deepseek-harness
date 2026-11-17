@@ -10,6 +10,7 @@
  * Loader fixtures resolve from their package manifest.
  */
 
+import { execFileSync } from 'node:child_process'
 import { globSync, readFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { Script } from 'node:vm'
@@ -63,7 +64,7 @@ if (import.meta.main) {
   const files = cordisConfigFiles(root)
 
   for (const file of files) {
-    const document = loadCordisYaml(readFileSync(resolve(root, file), 'utf8'))
+    const document = loadCordisYaml(readCordisConfigText(root, file))
     if (!isUnknownArray(document)) {
       errors.push(`${file}: root must be a Loader entry array`)
       continue
@@ -87,6 +88,22 @@ if (import.meta.main) {
   } else {
     console.log(`verify-cordis-config: ${files.length} config files passed.`)
   }
+}
+
+/** Read a Loader symlink whose checkout stores its Git target as plain text.
+ * @param repoRoot - repository root containing the Git index.
+ * @param file - repository-relative Loader configuration path.
+ * @returns the target file contents for a tracked symlink, otherwise the file contents.
+ */
+export function readCordisConfigText(repoRoot: string, file: string): string {
+  const path = resolve(repoRoot, file)
+  const text = readFileSync(path, 'utf8')
+  const target = text.trim()
+  if (!/^\.\.?[\\/]/u.test(target) || /[\r\n]/u.test(target)) return text
+
+  const indexEntry = execFileSync('git', ['ls-files', '--stage', '--', file], { cwd: repoRoot, encoding: 'utf8' })
+  if (!indexEntry.startsWith('120000 ')) return text
+  return readFileSync(resolve(dirname(path), target), 'utf8')
 }
 
 /**
