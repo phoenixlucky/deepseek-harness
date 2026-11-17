@@ -32,7 +32,7 @@ export interface Config {
 }
 
 /** Schema for relocatable assets and user-controlled skill enablement. */
-export const ConfigSchema = z.object({
+export const Config = z.object({
   assetRoot: z.string().min(1).default(DEFAULT_ASSET_ROOT),
   disabledSkills: z.array(z.string()).default(DEFAULT_DISABLED).volatile(),
   updatedSkills: z.dict(z.string()).default({}).volatile(),
@@ -54,8 +54,8 @@ function parseSkill(raw: string, path: string): Parsed {
     throw new Error(`skill-official: ${path} has invalid YAML frontmatter: ${reason}`, { cause: error })
   }
   if (typeof header !== 'object' || header === null || Array.isArray(header)) throw new Error(`skill-official: ${path} has invalid frontmatter`)
-  const name: unknown = Reflect.get(header, 'name') as unknown
-  const description: unknown = Reflect.get(header, 'description') as unknown
+  const name: unknown = Reflect.get(header, 'name')
+  const description: unknown = Reflect.get(header, 'description')
   if (typeof name !== 'string' || !isSkillName(name)) throw new Error(`skill-official: ${path} has invalid skill name`)
   if (typeof description !== 'string' || description.trim() === '') throw new Error(`skill-official: ${path} has no description`)
   return { name, description: description.trim(), content: raw.slice(match[0].length).trim() }
@@ -131,17 +131,3 @@ export function apply(
     if (ns === 'skill-official') controlRef.invalidate?.()
   })
 }
-
-/** Embedded source catalogue for a Settings search surface. */
-export const BUILTIN_SKILLS = Object.freeze(SKILL_DIRS.map((directory) => {
-  const path = fileURLToPath(new URL(`../assets/${directory}/SKILL.md`, import.meta.url))
-  const skill = parseSkill(readFileSync(path, 'utf8'), path)
-  return Object.freeze({
-    name: skill.name,
-    description: skill.description,
-    source: directory.startsWith('wj-forge/') ? 'WJ Forge' : 'Figma',
-  })
-}))
-
-/** Cordis plugin entry for the official skill provider. */
-export default { apply, Config: ConfigSchema, inject }

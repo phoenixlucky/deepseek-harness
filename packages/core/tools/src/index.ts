@@ -13,8 +13,7 @@ import { assertSupportedJsonSchema } from './json-schema.ts'
 import { RUN_CODE_NAME, ToolActivationError } from './contracts.ts'
 import type {
   ToolDefinition, ToolRestriction, ToolExecution, ToolGuard, ToolGuardDenial,
-  ResolvedToolSet, ToolActivationContext, ToolRegistrationOptions,
-  ToolRegistrationSnapshot,
+  ResolvedToolSet, ToolActivationContext, ToolRegistrationOptions, ToolRegistrationSnapshot,
 } from './contracts.ts'
 
 declare module '@deepseek-ai/dsh-system-prompt' {

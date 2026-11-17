@@ -85,11 +85,18 @@ describe('exactEditState', () => {
 
 describe('product identifiers', () => {
   it.each([
+    'apps/web/tests/creator-persona.e2e.ts',
+    'docs/superpowers/plans/2026-11-17-official-skill-restoration.md',
+    'docs/superpowers/plans/2026-11-17-official-skill-restoration.zh.md',
     'docs/tool-catalog.md',
     'docs/tool-catalog.zh.md',
+    'docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.md',
+    'docs/upgrade-guide/v0.2.2-rc.1/subagent-interrupt-default/guide.zh.md',
     'docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.md',
     'docs/upgrade-guide/v0.2.2-alpha.2/fs-observation-policy-default-off/guide.zh.md',
+    'packages/experimental/cua/tests/agent-scopes.spec.ts',
     'scripts/gen-tool-catalog.ts',
+    'packages/skill/skill-official/tests/web-profile.integration.spec.ts',
   ])('preserves the cordis preset and config references in %s', (file) => {
     const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
     expect(text.toLowerCase()).toContain('cordis')

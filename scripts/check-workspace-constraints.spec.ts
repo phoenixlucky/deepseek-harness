@@ -453,8 +453,7 @@ describe('package payload constraints', () => {
     },
   )
 
-  it('exempts the private plugin market generator from release rules in its own directory only', () => {
-    const dir = 'apps/plugin-market-generator'
+  it.each(['apps/plugin-market-generator', 'apps/desktop-publisher'])('exempts private tool %s from release rules in its own directory only', (dir) => {
     const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
     expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
     expect(checkWorkspaceManifest({ dir: 'apps/other-tool', manifest })).not.toEqual([])
@@ -564,6 +563,16 @@ describe('package payload constraints', () => {
       } })).toEqual([expect.stringContaining('package.json files must be')])
     },
   )
+
+  it('publishes the reviewed skill assets used by the official provider', () => {
+    const dir = 'packages/skill/skill-official'
+    const manifest = JSON.parse(readFileSync(new URL(`../${dir}/package.json`, import.meta.url), 'utf8')) as WorkspaceManifest['manifest']
+    expect(expectedDshPackageFiles(manifest)).toContain('assets')
+    expect(checkWorkspaceManifest({ dir, manifest })).toEqual([])
+    expect(checkWorkspaceManifest({ dir, manifest: {
+      ...manifest, files: manifest.files!.filter(file => file !== 'assets'),
+    } })).toEqual([expect.stringContaining('package.json files must be')])
+  })
 })
 
 it('publishes CLI runtime declarations and rejects a payload that omits them', () => {
