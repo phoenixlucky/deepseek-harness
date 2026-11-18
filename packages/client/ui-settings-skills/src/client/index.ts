@@ -1,4 +1,4 @@
-/** Register the official skills Settings tab while its provider configuration is served. */
+/** Register the official skills Settings section while its provider configuration is served. */
 
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
@@ -11,7 +11,7 @@ import { OfficialSkillsSettingsController, type OfficialSkillsConfig } from './s
 /** Locale namespace this feature owns. */
 export const NS = 'settings.skills'
 
-/** Services used by the Settings tab. */
+/** Services used by the Settings section. */
 export const inject = ['slots', 'locale', 'configForms']
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -21,7 +21,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-/** Register the feature-owned tab into the Plugins Settings section.
+/** Register the feature-owned section in Settings.
  * @param ctx - browser plugin context with locale, slots, and configuration forms.
  * @returns nothing; all feature resources follow the plugin fiber lifecycle.
  */
@@ -31,10 +31,10 @@ export function apply(ctx: ClientContext): void {
   const controller = new OfficialSkillsSettingsController(ctx.configForms.get<OfficialSkillsConfig>('official-skills'))
   ctx.effect(() => () => { controller.dispose() }, 'ui-settings-skills: form subscriptions')
   ctx.effect(
-    () => ctx.configForms.whileServed(['official-skills'], () => ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
-      name: 'settings.plugins.tab', id: 'skills', order: 20, label: () => t('title'), locale: NS,
+    () => ctx.configForms.whileServed(['official-skills'], () => ctx.slots.register({
+      name: 'settings.section', id: 'skills', order: 20, label: () => t('title'), locale: NS,
       inject: () => controller.inject(),
-    }, SkillsSettingsTab))),
-    'ui-settings-skills: tab',
+    }, SkillsSettingsTab)),
+    'ui-settings-skills: section',
   )
 }

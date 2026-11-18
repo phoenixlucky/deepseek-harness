@@ -108,7 +108,7 @@
 - 修改：`E:/home/dsh_plugin_manager_wj/locale/en.json`
 - 修改：`E:/home/dsh_plugin_manager_wj/locale/zh.json`
 - 修改：`E:/home/dsh_plugin_manager_wj/README.md` 和 `README.zh.md`
-- 仅在需要挂载独立 bundle 时，修改 `packages/client/ui-settings-plugin-inventory/src/client/PluginInventorySettingsTab.tsx` 及其 locale 文案
+- 仅在需要挂载独立 bundle 时，修改客户端设置界面及其 locale 文案
 
 **接口：**
 

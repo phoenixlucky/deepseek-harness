@@ -16,7 +16,7 @@ Review the [safety notice](SAFETY.md) before running the project.
 
 ### Branch highlights
 
-- The Web **Built-in plugins** settings section accepts tabs from contributed plugins; the shipped composition no longer adds the inventory tab by default. See [plugin settings](packages/client/ui-settings-plugins/README.md).
+- Official skills can be managed from the Web Settings page. See [official skills settings](packages/client/ui-settings-skills/README.md).
 - The MCP servers settings page remains available as a package, but the shipped Web composition no longer mounts it. See [MCP settings](packages/client/ui-settings-mcp/README.md).
 - OpenCode Go catalog routes select the endpoint path for the model's API protocol, while a configured `baseURL` remains unchanged. See [pi-ai provider routes](packages/llm/llm-pi-ai/README.md).
 

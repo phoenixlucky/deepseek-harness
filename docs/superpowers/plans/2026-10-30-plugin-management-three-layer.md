@@ -101,7 +101,7 @@ English | [中文](2026-10-30-plugin-management-three-layer.zh.md)
 - Modify: `E:/home/dsh_plugin_manager_wj/locale/en.json`
 - Modify: `E:/home/dsh_plugin_manager_wj/locale/zh.json`
 - Modify: `E:/home/dsh_plugin_manager_wj/README.md` and `README.zh.md`
-- Modify: `packages/client/ui-settings-plugin-inventory/src/client/PluginInventorySettingsTab.tsx` and its locale-owned presentation only if needed to mount or link the independent bundle entry
+- Modify: the client settings presentation and locale-owned copy only if needed to mount or link the independent bundle entry
 
 **Interfaces:**
 - Consume existing inventory, `remote.pluginManager` methods from Task 3, and existing `configForms` service. Schema forms remain the only configuration mutation interface.

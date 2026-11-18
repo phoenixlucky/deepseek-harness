@@ -16,7 +16,7 @@ DeepSeek Harness 处于 _开发者预览_ 阶段，正在快速迭代。**未来
 
 ### 此分支的特性
 
-- Web **内置插件**设置分区可显示由其他插件贡献的标签页；随附的组合不再默认添加清单标签页。详见[插件设置](packages/client/ui-settings-plugins/README.zh.md)。
+- 可在 Web 设置页管理官方技能。详见[官方技能设置](packages/client/ui-settings-skills/README.zh.md)。
 - MCP 服务器设置页仍可作为包使用，但随附的 Web 组合不再挂载它。详见[MCP 设置](packages/client/ui-settings-mcp/README.zh.md)。
 - OpenCode Go 目录路由会根据模型的 API 协议选择端点路径；显式配置的 `baseURL` 保持不变。详见[pi-ai 提供方路由](packages/llm/llm-pi-ai/README.zh.md)。
 

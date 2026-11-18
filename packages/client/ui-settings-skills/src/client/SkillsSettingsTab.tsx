@@ -7,9 +7,9 @@ import { formLabels, type SkillsSettingsLocaleKey } from './locales.ts'
 import { OFFICIAL_SKILLS, type OfficialSkillsFace, type SkillUpdateStatus } from './settingsModel.ts'
 import css from './skills-settings.module.css'
 
-/** Props the renderer binds for the Skills Settings tab. */
+/** Props the renderer binds for the Skills Settings section. */
 export type SkillsSettingsTabProps =
-  PropsRuntime<'settings.plugins.tab'>
+  PropsRuntime<'settings.section'>
   & PropsLocale<'settings.skills'>
   & InjectFace<OfficialSkillsFace>
 

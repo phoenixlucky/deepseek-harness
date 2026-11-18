@@ -23,7 +23,7 @@ async function bench() {
 function declareRoot(slots: SlotRegistry): () => void {
   return slots.register({
     name: 'root',
-    children: { 'settings.plugins.tab': { kind: 'list', scope: 'root' } },
+    children: { 'settings.section': { kind: 'list', scope: 'root' } },
   } as never, () => null)
 }
 
@@ -36,26 +36,26 @@ describe('ui-settings-skills apply', () => {
     expect(inject).toEqual(['slots', 'locale', 'configForms'])
   })
 
-  it('registers the official skills tab in the Plugins Settings slot', async () => {
+  it('registers the official skills section in Settings', async () => {
     const { ctx, slots } = await bench()
     declareRoot(slots)
 
     await ctx.plugin({ inject: [...inject], apply }).await()
 
-    const entry = slots.entries('settings.plugins.tab')[0]!
+    const entry = slots.entries('settings.section')[0]!
     expect(entry.options).toMatchObject({ id: 'skills', order: 20 })
     expect(entry.locale).toBe('settings.skills')
   })
 
-  it('removes its tab and controller subscriptions on teardown', async () => {
+  it('removes its section and controller subscriptions on teardown', async () => {
     const { ctx, slots } = await bench()
     declareRoot(slots)
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
-    expect(slots.entries('settings.plugins.tab')).toHaveLength(1)
+    expect(slots.entries('settings.section')).toHaveLength(1)
 
     await fiber.dispose()
 
-    expect(slots.entries('settings.plugins.tab')).toHaveLength(0)
+    expect(slots.entries('settings.section')).toHaveLength(0)
   })
 })

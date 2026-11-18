@@ -1289,6 +1289,12 @@
     },
     {
       "doc": "docs/subsystems/ptc-runtime.md",
+      "symbol": "PtcInspectableValue",
+      "source": "packages/ptc-runtime/ptc-runtime/src/inspectable-value.ts",
+      "projection": "public-api"
+    },
+    {
+      "doc": "docs/subsystems/ptc-runtime.md",
       "symbol": "PtcOutput",
       "source": "packages/ptc-runtime/ptc-runtime/src/types.ts"
     },
@@ -2364,16 +2370,6 @@
       "source": "packages/mcp/mcp-resources/src/index.ts"
     },
     {
-      "doc": "docs/subsystems/mcp.md",
-      "symbol": "McpClientSnapshot",
-      "source": "packages/mcp/mcp-client/src/registry.ts"
-    },
-    {
-      "doc": "docs/subsystems/mcp.md",
-      "symbol": "McpClientState",
-      "source": "packages/mcp/mcp-client/src/registry.ts"
-    },
-    {
       "doc": "docs/subsystems/deliverables.md",
       "symbol": "PresentedFile",
       "source": "packages/deliverables/tool-present/src/types.ts"
@@ -2549,6 +2545,26 @@
       "source": "packages/experimental/forge-session/src/types.ts"
     },
     {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ForgeCommandRule",
+      "source": "packages/experimental/forge-session/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ForgeCommandGroup",
+      "source": "packages/experimental/forge-session/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ForgeCommandArguments",
+      "source": "packages/experimental/forge-session/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ForgeCommandSelection",
+      "source": "packages/experimental/forge-session/src/types.ts"
+    },
+    {
       "doc": "docs/subsystems/boot.md",
       "symbol": "ProfileReconciliation",
       "source": "packages/boot/hmr/src/index.ts"
@@ -2645,6 +2661,16 @@
     },
     {
       "doc": "docs/subsystems/worktrees.md",
+      "symbol": "EnterWorktreeRequest",
+      "source": "packages/experimental/worktree/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/worktrees.md",
+      "symbol": "EnteredWorktree",
+      "source": "packages/experimental/worktree/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/worktrees.md",
       "symbol": "RestoreWorktreeRequest",
       "source": "packages/experimental/worktree/src/types.ts"
     },
@@ -2666,6 +2692,16 @@
     {
       "doc": "docs/subsystems/forge.md",
       "symbol": "ForgeReadiness",
+      "source": "packages/experimental/forge/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ChangeRequestNoun",
+      "source": "packages/experimental/forge/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ForgeDescription",
       "source": "packages/experimental/forge/src/types.ts"
     },
     {
@@ -2750,7 +2786,17 @@
     },
     {
       "doc": "docs/subsystems/forge.md",
-      "symbol": "ForgeBranches",
+      "symbol": "ForgeWorktreeBases",
+      "source": "packages/experimental/client-ui-forge/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ForgeRemoteDefault",
+      "source": "packages/experimental/client-ui-forge/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/forge.md",
+      "symbol": "ForgeRemoteBranches",
       "source": "packages/experimental/client-ui-forge/src/types.ts"
     },
     {
