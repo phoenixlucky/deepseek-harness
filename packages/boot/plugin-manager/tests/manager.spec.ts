@@ -97,7 +97,7 @@ async function fixture(reload: 'live' | 'startup' = 'live', overlay = false, pre
   }
   return {
     ctx, dir, manager: ctx.pluginManager, bundle, profile, stopHmr,
-    overlays, overlayPath, connection, gitConnection, toolRegistrations,
+    overlayPath, connection, gitConnection, toolRegistrations,
   }
 }
 
