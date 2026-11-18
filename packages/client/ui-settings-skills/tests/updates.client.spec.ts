@@ -23,4 +23,20 @@ describe('browser and Host Figma update validation', () => {
       expect(() => validateOnHost(name, content)).toThrow()
     }
   })
+
+  it('reads the same frontmatter scalars, and refuses the same YAML forms on both sides', () => {
+    const quoted = VALID.replace('description: Design guide', 'description: "Design guide: figma"')
+    expect(validateInBrowser('figma-design-skill', quoted)).toEqual(validateOnHost('figma-design-skill', quoted))
+    const refused = [
+      VALID.replace('description: Design guide', 'description: |\n  Design guide'),
+      VALID.replace('description: Design guide', 'description: {text: Design guide}'),
+      VALID.replace('description: Design guide', 'description: &guide Design guide'),
+      VALID.replace('category: 前端与设计', 'category: 前端与设计\ncategory: 后端'),
+      VALID.replace('runAs: inline', 'runAs: inline\n  continued'),
+    ]
+    for (const content of refused) {
+      expect(() => validateInBrowser('figma-design-skill', content)).toThrow(/invalid frontmatter/u)
+      expect(() => validateOnHost('figma-design-skill', content)).toThrow(/invalid frontmatter/u)
+    }
+  })
 })

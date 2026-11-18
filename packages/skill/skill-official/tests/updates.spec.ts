@@ -60,6 +60,19 @@ describe('fixed-source Figma updates', () => {
       .toThrow(/frontmatter/u)
   })
 
+  it('accepts only the single-line scalar frontmatter the reviewed source uses', () => {
+    const quoted = VALID.replace('description: Updated design guide', 'description: "Updated guide: figma"')
+    expect(validateSkillUpdateContent('figma-design-skill', quoted).version).toBe('2.4.3')
+    const refused = [
+      VALID.replace('description: Updated design guide', 'description: |\n  Updated design guide'),
+      VALID.replace('description: Updated design guide', 'description: {text: guide}'),
+      VALID.replace('runAs: inline', 'runAs: inline\nrunAs: shell'),
+    ]
+    for (const content of refused) {
+      expect(() => validateSkillUpdateContent('figma-design-skill', content)).toThrow(/invalid frontmatter/u)
+    }
+  })
+
   it('passes cancellation through and leaves installed settings unchanged on failure', async () => {
     const controller = new AbortController()
     const installed = { 'figma-design-skill': VALID }
